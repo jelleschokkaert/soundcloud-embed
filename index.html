@@ -85,7 +85,7 @@
             border: 1px solid var(--border);
             position: relative;
             overflow: hidden;
-            
+
         }
 
         .now-playing-card.playing {
@@ -206,31 +206,67 @@
 
         .progress-bar {
             flex: 1;
-            height: 28px;
+            height: 48px;
             display: flex;
             align-items: center;
             cursor: pointer;
             touch-action: none;
+            position: relative;
         }
 
         .progress-track {
             width: 100%;
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
+            height: 32px;
+            background: var(--bg-active);
+            border-radius: 6px;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* Waveform-style bars */
+        .progress-track::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(90deg,
+                    transparent 0px,
+                    transparent 2px,
+                    var(--border) 2px,
+                    var(--border) 4px);
+            mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,16 Q5,8 10,16 T20,16 T30,16 T40,16 T50,16 T60,16 T70,16 T80,16 T90,16 T100,16 L100,32 L0,32 Z' fill='white'/%3E%3C/svg%3E");
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,16 Q5,8 10,16 T20,16 T30,16 T40,16 T50,16 T60,16 T70,16 T80,16 T90,16 T100,16 L100,32 L0,32 Z' fill='white'/%3E%3C/svg%3E");
+            mask-size: 100% 100%;
+            -webkit-mask-size: 100% 100%;
+            opacity: 0.5;
         }
 
         .progress-fill {
             height: 100%;
-            background: var(--accent);
-            border-radius: 2px;
+            background: linear-gradient(180deg, var(--accent) 0%, #cc4400 100%);
+            border-radius: 6px;
             width: 0%;
             transition: width 0.1s linear;
+            position: relative;
         }
 
-        .progress-bar:active .progress-track {
-            height: 8px;
+        /* Seek handle */
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        .progress-bar:active .progress-fill::after {
+            width: 20px;
+            height: 20px;
+            right: -10px;
         }
 
         /* Controls */
@@ -1227,6 +1263,13 @@
                     renderQueue();
                     renderTracks();
                     playTrack(nextTrack);
+                } else if (isShuffled) {
+                    // Shuffle mode: pick random track (avoid current)
+                    let randomIndex;
+                    do {
+                        randomIndex = Math.floor(Math.random() * trackCount);
+                    } while (randomIndex === currentIndex && trackCount > 1);
+                    playTrack(randomIndex);
                 } else if (currentIndex < trackCount - 1) {
                     widget.next();
                 }
@@ -1322,6 +1365,143 @@
 
         // Scroll listener for mini player
         window.addEventListener('scroll', checkMiniPlayer, { passive: true });
+
+        // ============================================
+        // MEDIA SESSION API - Lock Screen Controls
+        // ============================================
+
+        // Default artwork as data URI (orange music note icon)
+        const DEFAULT_ARTWORK = 'data:image/svg+xml,' + encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+                <rect width="512" height="512" fill="#ff5500"/>
+                <path fill="white" d="M256 80c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176S353.2 80 256 80zm80 200h-64v80c0 26.5-21.5 48-48 48s-48-21.5-48-48 21.5-48 48-48c8.7 0 16.9 2.3 24 6.4V152h88v128z"/>
+            </svg>
+        `);
+
+        // Update Media Session metadata
+        function updateMediaSession() {
+            if (!('mediaSession' in navigator)) return;
+
+            const title = getTrackTitle(currentIndex) || 'Unknown Track';
+
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: title,
+                artist: 'SoundCloud',
+                album: 'Music Player',
+                artwork: [
+                    { src: DEFAULT_ARTWORK, sizes: '512x512', type: 'image/svg+xml' }
+                ]
+            });
+        }
+
+        // Update position state for lock screen scrubbing
+        function updatePositionState() {
+            if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+            if (duration <= 0) return;
+
+            widget.getPosition(function (position) {
+                try {
+                    navigator.mediaSession.setPositionState({
+                        duration: duration / 1000,  // Convert ms to seconds
+                        playbackRate: 1,
+                        position: Math.min(position / 1000, duration / 1000)  // Convert ms to seconds
+                    });
+                } catch (e) {
+                    console.log('Position state error:', e);
+                }
+            });
+        }
+
+        // Setup Media Session action handlers
+        function setupMediaSessionHandlers() {
+            if (!('mediaSession' in navigator)) return;
+
+            const actionHandlers = [
+                ['play', () => {
+                    widget.play();
+                    navigator.mediaSession.playbackState = 'playing';
+                }],
+                ['pause', () => {
+                    widget.pause();
+                    navigator.mediaSession.playbackState = 'paused';
+                }],
+                ['previoustrack', () => {
+                    widget.prev();
+                }],
+                ['nexttrack', () => {
+                    if (queue.length > 0) {
+                        const nextTrack = queue.shift();
+                        renderQueue();
+                        renderTracks();
+                        playTrack(nextTrack);
+                    } else {
+                        widget.next();
+                    }
+                }],
+                ['seekto', (details) => {
+                    if (details.seekTime !== undefined && duration > 0) {
+                        const seekMs = details.seekTime * 1000;  // Convert seconds to ms
+                        widget.seekTo(seekMs);
+                        updatePositionState();
+                    }
+                }],
+                ['seekbackward', (details) => {
+                    const skipTime = details.seekOffset || 10;  // Default 10 seconds
+                    widget.getPosition(function (pos) {
+                        const newPos = Math.max(0, pos - (skipTime * 1000));
+                        widget.seekTo(newPos);
+                        updatePositionState();
+                    });
+                }],
+                ['seekforward', (details) => {
+                    const skipTime = details.seekOffset || 10;  // Default 10 seconds
+                    widget.getPosition(function (pos) {
+                        const newPos = Math.min(duration, pos + (skipTime * 1000));
+                        widget.seekTo(newPos);
+                        updatePositionState();
+                    });
+                }],
+                ['stop', () => {
+                    widget.pause();
+                    widget.seekTo(0);
+                    navigator.mediaSession.playbackState = 'paused';
+                }]
+            ];
+
+            for (const [action, handler] of actionHandlers) {
+                try {
+                    navigator.mediaSession.setActionHandler(action, handler);
+                } catch (error) {
+                    console.log(`Media session action "${action}" not supported`);
+                }
+            }
+        }
+
+        // Initialize Media Session handlers
+        setupMediaSessionHandlers();
+
+        // Hook into existing events to update Media Session
+        const originalUpdateCurrentTrack = updateCurrentTrack;
+        updateCurrentTrack = function (index) {
+            originalUpdateCurrentTrack(index);
+            updateMediaSession();
+            updatePositionState();
+        };
+
+        const originalUpdatePlayingState = updatePlayingState;
+        updatePlayingState = function (playing) {
+            originalUpdatePlayingState(playing);
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+            }
+        };
+
+        // Update position state periodically for accurate lock screen scrubbing
+        setInterval(() => {
+            if (isPlaying && duration > 0) {
+                updatePositionState();
+            }
+        }, 1000);
     </script>
 </body>
 
