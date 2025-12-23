@@ -7,7 +7,7 @@
     <title>Music Player</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -19,10 +19,14 @@
         :root {
             --bg: #0d0d0f;
             --bg-card: #18181b;
+            --bg-active: #27272a;
             --accent: #ff5500;
+            --accent-dim: rgba(255, 85, 0, 0.15);
+            --accent-glow: rgba(255, 85, 0, 0.4);
             --text: #fafafa;
             --text-dim: #71717a;
             --border: #27272a;
+            --success: #22c55e;
         }
 
         html,
@@ -37,10 +41,8 @@
 
         /* Header */
         .header {
-            position: fixed;
+            position: sticky;
             top: 0;
-            left: 0;
-            right: 0;
             background: var(--bg-card);
             border-bottom: 1px solid var(--border);
             z-index: 100;
@@ -71,46 +73,550 @@
         .header h1 {
             font-size: 1.1rem;
             font-weight: 600;
+            flex: 1;
         }
 
-        /* Player Container */
-        .player-container {
-            padding-top: calc(68px + env(safe-area-inset-top));
-            padding-bottom: env(safe-area-inset-bottom);
-            min-height: 100vh;
-            min-height: 100dvh;
+        /* Now Playing Card */
+        .now-playing-card {
+            background: var(--bg-card);
+            margin: 1rem;
+            border-radius: 16px;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
         }
 
-        /* Full-screen SoundCloud embed */
-        .soundcloud-embed {
-            width: 100%;
-            height: calc(100vh - 68px - env(safe-area-inset-top));
-            height: calc(100dvh - 68px - env(safe-area-inset-top));
-            border: none;
-            display: block;
+        .now-playing-card.playing {
+            border-color: var(--accent);
+            box-shadow: 0 0 30px var(--accent-glow);
         }
 
-        /* Loading state */
-        .loading {
-            position: fixed;
+        .now-playing-card.playing::before {
+            content: '';
+            position: absolute;
             inset: 0;
-            background: var(--bg);
+            background: linear-gradient(135deg, var(--accent-dim) 0%, transparent 50%);
+            animation: pulse-bg 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-bg {
+
+            0%,
+            100% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .now-playing-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .now-playing-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .equalizer {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 12px;
+        }
+
+        .eq-bar {
+            width: 3px;
+            background: var(--accent);
+            border-radius: 1px;
+        }
+
+        .playing .eq-bar {
+            animation: eq 0.5s ease-in-out infinite alternate;
+        }
+
+        .eq-bar:nth-child(1) {
+            height: 40%;
+            animation-delay: 0s;
+        }
+
+        .eq-bar:nth-child(2) {
+            height: 70%;
+            animation-delay: 0.1s;
+        }
+
+        .eq-bar:nth-child(3) {
+            height: 50%;
+            animation-delay: 0.2s;
+        }
+
+        .eq-bar:nth-child(4) {
+            height: 90%;
+            animation-delay: 0.15s;
+        }
+
+        @keyframes eq {
+            from {
+                height: 20%;
+            }
+
+            to {
+                height: 100%;
+            }
+        }
+
+        .current-track-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .time {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            min-width: 36px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .time.end {
+            text-align: right;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            touch-action: none;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .progress-bar:active .progress-track {
+            height: 8px;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .control-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .control-btn:active {
+            transform: scale(0.9);
+            background: var(--bg-active);
+        }
+
+        .control-btn.play {
+            width: 56px;
+            height: 56px;
+            background: var(--accent);
+        }
+
+        .control-btn.play:active {
+            background: #e64d00;
+        }
+
+        .control-btn.shuffle.active {
+            color: var(--accent);
+            background: var(--accent-dim);
+        }
+
+        .control-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .control-btn.play svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Queue Section */
+        .queue-section {
+            margin: 0 1rem 1rem;
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .queue-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .queue-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .queue-badge {
+            background: var(--accent);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .queue-clear {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .queue-clear:hover {
+            color: var(--accent);
+        }
+
+        .queue-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .queue-list:empty::after {
+            content: 'Queue is empty. Tap + on tracks to add.';
+            display: block;
+            padding: 1rem;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .queue-item:last-child {
+            border-bottom: none;
+        }
+
+        .queue-item-num {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            width: 20px;
+        }
+
+        .queue-item-title {
+            flex: 1;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .queue-remove {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .queue-remove:hover {
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff4444;
+        }
+
+        /* Track List */
+        .track-list-section {
+            padding: 0 1rem 2rem;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .track-list {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .track-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .track-item:last-child {
+            border-bottom: none;
+        }
+
+        .track-item:active {
+            background: var(--bg-active);
+        }
+
+        .track-item.playing {
+            background: var(--accent-dim);
+        }
+
+        .track-item.in-queue {
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .track-number {
+            width: 24px;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .track-item.playing .track-number span {
+            display: none;
+        }
+
+        .track-item.playing .playing-icon {
+            display: flex;
+        }
+
+        .playing-icon {
+            display: none;
+            align-items: flex-end;
+            gap: 2px;
+            height: 14px;
+        }
+
+        .playing-icon .eq-bar {
+            width: 3px;
+            animation: eq 0.4s ease-in-out infinite alternate;
+        }
+
+        .track-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .track-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .track-item.playing .track-title {
+            color: var(--accent);
+        }
+
+        .track-duration {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .add-to-queue {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.15s ease;
+        }
+
+        .add-to-queue:hover {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .add-to-queue.added {
+            color: var(--success);
+        }
+
+        .add-to-queue svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Mini Player */
+        .mini-player {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+            padding: 0.75rem 1rem;
+            padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 200;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .mini-player.visible {
+            transform: translateY(0);
+        }
+
+        .mini-play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .mini-play-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .mini-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mini-track-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 0.25rem;
+        }
+
+        .mini-progress {
+            height: 3px;
+            background: var(--border);
+            border-radius: 1.5px;
+            overflow: hidden;
+        }
+
+        .mini-progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+        }
+
+        .mini-expand {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mini-expand svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Loading State */
+        .loading {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            z-index: 50;
-            transition: opacity 0.4s ease;
-        }
-
-        .loading.hidden {
-            opacity: 0;
-            pointer-events: none;
+            padding: 3rem 2rem;
+            color: var(--text-dim);
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             border: 3px solid var(--border);
             border-top-color: var(--accent);
             border-radius: 50%;
@@ -124,9 +630,19 @@
             }
         }
 
-        .loading span {
-            color: var(--text-dim);
-            font-size: 0.9rem;
+        /* Hidden iframe */
+        .hidden-player {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Bottom padding for mini player */
+        .bottom-spacer {
+            height: 80px;
         }
     </style>
 </head>
@@ -142,33 +658,669 @@
         <h1>Music Player</h1>
     </header>
 
-    <!-- Player Container -->
-    <div class="player-container">
-        <iframe id="scPlayer" class="soundcloud-embed" scrolling="yes" frameborder="no" allow="autoplay"
-            src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/1521282808&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false">
+    <!-- Now Playing Card -->
+    <div class="now-playing-card" id="nowPlayingCard">
+        <div class="now-playing-content">
+            <div class="now-playing-label">
+                <div class="equalizer" id="eqBars">
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                    <div class="eq-bar"></div>
+                </div>
+                <span>Now Playing</span>
+            </div>
+            <div class="current-track-name" id="currentTrackName">Select a track to play</div>
+
+            <div class="progress-container">
+                <span class="time" id="timeNow">0:00</span>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+                <span class="time end" id="timeTotal">0:00</span>
+            </div>
+
+            <div class="controls">
+                <button class="control-btn shuffle" id="shuffleBtn" aria-label="Shuffle">
+                    <svg viewBox="0 0 24 24">
+                        <path
+                            d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
+                    </svg>
+                </button>
+                <button class="control-btn" id="prevBtn" aria-label="Previous">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                    </svg>
+                </button>
+                <button class="control-btn play" id="playBtn" aria-label="Play">
+                    <svg viewBox="0 0 24 24" id="playIcon">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                </button>
+                <button class="control-btn" id="nextBtn" aria-label="Next">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                    </svg>
+                </button>
+                <button class="control-btn" style="visibility: hidden;">
+                    <svg viewBox="0 0 24 24"></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Queue Section -->
+    <div class="queue-section" id="queueSection">
+        <div class="queue-header" id="queueHeader">
+            <div class="queue-title">
+                <span>Up Next</span>
+                <span class="queue-badge" id="queueBadge">0</span>
+            </div>
+            <button class="queue-clear" id="clearQueue">Clear</button>
+        </div>
+        <div class="queue-list" id="queueList"></div>
+    </div>
+
+    <!-- Track List -->
+    <div class="track-list-section">
+        <div class="section-title">All Tracks</div>
+        <div class="track-list" id="trackList">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span>Loading tracks...</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bottom-spacer"></div>
+
+    <!-- Mini Player -->
+    <div class="mini-player" id="miniPlayer">
+        <button class="mini-play-btn" id="miniPlayBtn">
+            <svg viewBox="0 0 24 24" id="miniPlayIcon">
+                <path d="M8 5v14l11-7z" />
+            </svg>
+        </button>
+        <div class="mini-info" id="miniInfo">
+            <div class="mini-track-name" id="miniTrackName">-</div>
+            <div class="mini-progress">
+                <div class="mini-progress-fill" id="miniProgressFill"></div>
+            </div>
+        </div>
+        <button class="mini-expand" id="miniExpand" aria-label="Expand">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Hidden SoundCloud Player -->
+    <div class="hidden-player">
+        <iframe id="scPlayer" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay"
+            src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/1521282808&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false">
         </iframe>
     </div>
 
-    <!-- Loading overlay -->
-    <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <span>Loading playlist...</span>
-    </div>
-
+    <script src="https://w.soundcloud.com/player/api.js"></script>
     <script>
-        const iframe = document.getElementById('scPlayer');
-        const loading = document.getElementById('loading');
+        // Hardcoded track names (SoundCloud API doesn't provide all metadata upfront)
+        const TRACK_NAMES = [
+            "Dancin (extended/looped)(Aaron Smith - Dancin remix)",
+            "Praise The Lord (Da Shine) (Durdenhauer Edit) [feat. Skepta]",
+            "Save Your Tears (southstar remix)",
+            "A New Kind Of 💕 (southstar remix)",
+            "Silence",
+            "Migos - Walk It Talk It (DURDENHAUER Edit) [FREE DOWNLOAD]",
+            "Viva La Vida (Lynnic Rave Remix)",
+            "Manu Chao - Me Gustas Tu (JKRS Techno Remix)",
+            "i could be the one (marela edit)",
+            "Peggy Gou x CamelPhat & Elderbrook - NANANA x COLA (Ian Asher Edit) [MONTNER Flip]",
+            "Kate Ryan - Désenchantée (Trym Summer'20 Re-Work)",
+            "Matrakk - You're No Good",
+            "Whats A Girl To Do (KRIEGZ REMIX)",
+            "Misschien (kwijt) - Trance Remix (FREE DL)",
+            "DJ Daddy Trance - Day 'N' Night",
+            "Nelly Furtado - All Good Things Come To An End <DJ Traytex Trance Edit>",
+            "GOTTA STAY HIGH [FMB EDIT]",
+            "I Want Your Love (Baron's Disco Mix)",
+            "HUNG UP - Trance remix (FREE DL)",
+            "John Newman - Love Me Again (Centre Court Remix)",
+            "Baby Girl",
+            "feel the friction [og]",
+            "LAU – Higher Love [TNTX016]",
+            "Speed Drive (Baron Von Trax Edit)",
+            "Telephone (Oliver J Edit)",
+            "Years and Years - Desire (EDIT)",
+            "CRY FOR YOU (TRANCE EDIT)",
+            "Call The Shots",
+            "Maximum Spell (Baron Von Trax Regroove)",
+            "PARADA DE TETAS - TRANCE REMIX",
+            "THINKING ABOUT YOU - TRANCE REMIX",
+            "Chase The Sun (Trance Mix)",
+            "Tove Lo - Habits (Stay High) (Dylan Brown Edit)",
+            "say my name (passion mix)",
+            "Emotions",
+            "Smalltown Boy - Trance Remix (FREE DL)",
+            "Narciss - Painkiller (Unreleased remix)",
+            "Dua Lipa - Training Season (Marlon Hoffstadt aka DJ Daddy Trance Remix)",
+            "DJ Daddy Trance - Hold That Sucker Down",
+            "HALLELUJAH ANYWAY",
+            "Apologize",
+            "Waiting For Tonight",
+            "Sexy Bitch [Free DL]",
+            "Caesars - Jerk It Out (Mosmoz Happy Edit)",
+            "💫MIKA - Relax [VALL DU SON MILKYWAY MIX]💫",
+            "C'est Beau La Bourgeoisie (Edit)",
+            "What Is Love (Funk Tribu Edit 2k23)",
+            "Ascendant Vierge - Odymel Remix [BOOTLEG]",
+            "Kisses (Benleh Remix)",
+            "Drop The Pressure (Malugi Edit)",
+            "Always There",
+            "KIDS (TRANCE EDIT)",
+            "PASILDA GROOVE (HARD)",
+            "where have you been (leon vera organ mix)",
+            "Is This A Dream (leon vera mix)",
+            "Leave Me Alone [SLVA004]",
+            "[PREMIERE] Das Geheimnis der Dragonballs -UHD x EuroPlus x Anime Allstars x Hero of the Seven",
+            "Ayla",
+            "Careless Whisper (Radio Edit)",
+            "Premiere: Nero - Promises (Millie Forsberg Trance Edit) [DTECTVA03]",
+            "Liquid Crystal - You're No Good (Kara Okay Edit)",
+            "Lana Del Rey - Summertime Sadness (Dylan Brown Edit)",
+            "Premiere: Tory Lanez – Hurts Me (Antonym Trance Edit) [TNT007]",
+            "Coração",
+            "Ambra - liebst du mich noch so wie ich dich ? (KARVA Träumermix)",
+            "TOBIAS - Herzregen (DJ Festnetz Edit) [FREE DOWNLOAD]",
+            "Here To Stay (Don't Lose The Feeling)",
+            "W A T S K E B U R T supported by Bad Boombox",
+            "Premiere: Uptones - Energy [Free Download]",
+            "BANDOLERO",
+            "Camargue (Lewis Taylor Edit)",
+            "Cher - Believe (Scharfes ß Edit)",
+            "Baila Bolero (Bad Boombox Club Edit) [badass bootlegs vol.6]",
+            "Long Season Intro Edit",
+            "Get Out My Head",
+            "Out Of Space (Like its 1992 Mix)",
+            "Where Is My Mind?(Benleh Edit)",
+            "Second City I Wanna Feel - Nick Selter Edit",
+            "Better Off (Le Voie Le Soleil)[Free DL]",
+            "Let Me Be Your Fantasy",
+            "Sex On The Beach (Jojo909 Regroove) [FREE DL]",
+            "Opus III - It's A Fine Day (Kara Okay Edit)",
+            "What's a Girl to Do (KI/KI Remix)",
+            "a blunt in brazil",
+            "BEAUTIFUL PEOPLE - TRANCE REMIX",
+            "ANGEL ON MY SHOULDER (ENDLESS SUMMER MIX)",
+            "JUNIOR JACK - STUPIDISCO (Hardhouse edit) (Free DL)",
+            "Piano Language [Supported by Funk Tribu]",
+            "Forever",
+            "FEEL THE MOMENT",
+            "Walking On a Dream (Extended Version)",
+            "Finally (Scharfesss Remix)",
+            "THE GIVER (DJ DORFATZE EDIT)",
+            "Summer Fades",
+            "Durch Den Monsun (Party Remix) [FREE DL]",
+            "Insomnia",
+            "Hasta Siempre (MATRAKK REMIX) / FREE DOWNLOAD EXTENDED",
+            "Do It To Me",
+            "I Like It (EDIT) [FULL TRACK AS FREE DOWNLOAD]",
+            "Always (2025 revival mix)",
+            "THE SOUND OF VIOLENCE (FREE DL)(HARDHOUSE EDIT)",
+            "Around The World (Trance Edit) (Free DL)",
+            "In My Arms (HardHouse Edit) (Free DL)",
+            "Horny '25 (Hardhouse Free DL) (Hot 'n' Juicy and Hugues)",
+            "Afterparty - Gotu Jim (HUIJKIE remix)",
+            "S&M (Benleh Remix)",
+            "IN MY HEART (sunset mix)",
+            "One More Time (Lionsworth Trance Edit)",
+            "Marco B",
+            "SAXOBEAT BOOTLEG",
+            "Don't Stop The Music",
+            "Clubheroes – Da Lost Piano (Sean Drinan Edit) [TNTX025]",
+            "EVACUATE THE DANCEFLOOR - TRANCE REMIX",
+            "SUPERSTAR",
+            "I Was Made For Lovin' You (edit)",
+            "Crying At The Discoteque (Speed Garage Edit)",
+            "Burning Inside (Extended Mix)",
+            "My World Is Changing [FREE DL]",
+            "Summer Is Magic (Ryan Clay Edit)",
+            "Supermode - Tell Me Why (De Hofnar Remix)",
+            "Garden Of Love [TNTX036]",
+            "I Miss Your Love (Jojo909 Hard House Edit)",
+            "Shower (Frisian Extended Remix)",
+            "Move Your Body (Pat de Ruiter Remix)",
+            "Tonight Is Party Time [ADC028]",
+            "Rudeboy Riddim",
+            "Sunlight - The Magician (KernelKrop Remix) - Free DL",
+            "Tryting [Agrio Tracks]",
+            "JUST THE WAY YOU ARE",
+            "JUST CAN'T GET ENOUGH [FREE DL]",
+            "SWEATER WEATHER (DJJD Remix)",
+            "Annie - Trance Remix",
+            "Waiting For You (Extended Mix)",
+            "CELEBRATE THE LOVE [FREE DL]",
+            "Bakerstreet (B.O.B. Ltd. Extended Mix)",
+            "Paradisio - Bailando (Johnny Vitesse Edit) - FREE DL",
+            "Infinity 2008 (Venicious Remix)"
+        ];
 
-        iframe.addEventListener('load', () => {
-            setTimeout(() => {
-                loading.classList.add('hidden');
-            }, 300);
+        // State
+        const widget = SC.Widget('scPlayer');
+        let tracks = [];
+        let trackCount = TRACK_NAMES.length; // Use hardcoded count
+        let currentIndex = -1;
+        let isPlaying = false;
+        let isShuffled = false;
+        let duration = 0;
+        let queue = [];
+        let trackCache = {}; // Cache for track metadata
+
+        // DOM Elements
+        const trackListEl = document.getElementById('trackList');
+        const nowPlayingCard = document.getElementById('nowPlayingCard');
+        const currentTrackName = document.getElementById('currentTrackName');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const timeNow = document.getElementById('timeNow');
+        const timeTotal = document.getElementById('timeTotal');
+        const playBtn = document.getElementById('playBtn');
+        const playIcon = document.getElementById('playIcon');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const queueList = document.getElementById('queueList');
+        const queueBadge = document.getElementById('queueBadge');
+        const clearQueueBtn = document.getElementById('clearQueue');
+        const miniPlayer = document.getElementById('miniPlayer');
+        const miniPlayBtn = document.getElementById('miniPlayBtn');
+        const miniPlayIcon = document.getElementById('miniPlayIcon');
+        const miniTrackName = document.getElementById('miniTrackName');
+        const miniProgressFill = document.getElementById('miniProgressFill');
+        const miniExpand = document.getElementById('miniExpand');
+        const miniInfo = document.getElementById('miniInfo');
+
+        // Format time
+        function formatTime(ms) {
+            if (!ms || isNaN(ms) || ms <= 0) return '--:--';
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Get track title - use hardcoded names first
+        function getTrackTitle(index) {
+            // Use hardcoded names first
+            if (TRACK_NAMES[index]) {
+                return TRACK_NAMES[index];
+            }
+            // Fallback to cache or API data
+            if (trackCache[index]?.title) {
+                return trackCache[index].title;
+            }
+            if (tracks[index]?.title) {
+                return tracks[index].title;
+            }
+            return `Track ${index + 1}`;
+        }
+
+        // Get track duration - use cache if available
+        function getTrackDuration(index) {
+            if (trackCache[index]?.duration) {
+                return trackCache[index].duration;
+            }
+            if (tracks[index]?.duration) {
+                return tracks[index].duration;
+            }
+            return 0;
+        }
+
+        // Render track list
+        function renderTracks() {
+            const count = trackCount || tracks.length;
+            if (count === 0) {
+                trackListEl.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading tracks...</span></div>';
+                return;
+            }
+
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                const title = getTrackTitle(i);
+                const dur = getTrackDuration(i);
+                const isCurrentPlaying = i === currentIndex;
+                const isInQueue = queue.includes(i);
+
+                html += `
+                <div class="track-item ${isCurrentPlaying ? 'playing' : ''} ${isInQueue ? 'in-queue' : ''}" data-index="${i}">
+                    <div class="track-number">
+                        <span>${i + 1}</span>
+                        <div class="playing-icon">
+                            <div class="eq-bar"></div>
+                            <div class="eq-bar"></div>
+                            <div class="eq-bar"></div>
+                        </div>
+                    </div>
+                    <div class="track-info">
+                        <div class="track-title">${title}</div>
+                        <div class="track-duration">${formatTime(dur)}</div>
+                    </div>
+                    <button class="add-to-queue ${isInQueue ? 'added' : ''}" data-index="${i}" aria-label="Add to queue">
+                        <svg viewBox="0 0 24 24">${isInQueue ? '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>' : '<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>'}</svg>
+                    </button>
+                </div>`;
+            }
+            trackListEl.innerHTML = html;
+
+            // Track click - play
+            document.querySelectorAll('.track-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.add-to-queue')) return;
+                    const index = parseInt(item.dataset.index);
+                    playTrack(index);
+                });
+            });
+
+            // Add to queue button
+            document.querySelectorAll('.add-to-queue').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const index = parseInt(btn.dataset.index);
+                    toggleQueue(index);
+                });
+            });
+        }
+
+        // Render queue
+        function renderQueue() {
+            queueBadge.textContent = queue.length;
+
+            if (queue.length === 0) {
+                queueList.innerHTML = '';
+                return;
+            }
+
+            queueList.innerHTML = queue.map((trackIndex, i) => `
+                <div class="queue-item" data-index="${trackIndex}" data-queue-pos="${i}">
+                    <span class="queue-item-num">${i + 1}</span>
+                    <span class="queue-item-title">${getTrackTitle(trackIndex)}</span>
+                    <button class="queue-remove" data-queue-pos="${i}">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                    </button>
+                </div>
+            `).join('');
+
+            // Remove from queue
+            document.querySelectorAll('.queue-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const pos = parseInt(btn.dataset.queuePos);
+                    queue.splice(pos, 1);
+                    renderQueue();
+                    renderTracks();
+                });
+            });
+
+            // Play from queue
+            document.querySelectorAll('.queue-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const trackIndex = parseInt(item.dataset.index);
+                    const queuePos = parseInt(item.dataset.queuePos);
+                    queue.splice(queuePos, 1);
+                    playTrack(trackIndex);
+                });
+            });
+        }
+
+        // Toggle queue
+        function toggleQueue(index) {
+            const pos = queue.indexOf(index);
+            if (pos > -1) {
+                queue.splice(pos, 1);
+            } else {
+                queue.push(index);
+                if (isShuffled) {
+                    shuffleArray(queue);
+                }
+            }
+            renderQueue();
+            renderTracks();
+        }
+
+        // Shuffle array in place
+        function shuffleArray(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+        }
+
+        // Play track
+        function playTrack(index) {
+            widget.skip(index);
+            widget.play();
+        }
+
+        // Update play/pause icons
+        function updatePlayIcons() {
+            const playPath = '<path d="M8 5v14l11-7z"/>';
+            const pausePath = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
+            playIcon.innerHTML = isPlaying ? pausePath : playPath;
+            miniPlayIcon.innerHTML = isPlaying ? pausePath : playPath;
+        }
+
+        // Fetch and cache current track info
+        function fetchCurrentTrackInfo() {
+            widget.getCurrentSound(function (sound) {
+                if (sound && currentIndex >= 0) {
+                    trackCache[currentIndex] = {
+                        title: sound.title || `Track ${currentIndex + 1}`,
+                        duration: sound.duration || 0
+                    };
+
+                    // Update displays
+                    const title = sound.title || `Track ${currentIndex + 1}`;
+                    currentTrackName.textContent = title;
+                    miniTrackName.textContent = title;
+
+                    renderTracks();
+                    renderQueue();
+                }
+            });
+
+            // Get actual loaded duration for seeking
+            widget.getDuration(function (d) {
+                if (d && d > 0) {
+                    duration = d;
+                    timeTotal.textContent = formatTime(d);
+                    if (currentIndex >= 0) {
+                        trackCache[currentIndex] = trackCache[currentIndex] || {};
+                        trackCache[currentIndex].duration = d;
+                    }
+                }
+            });
+        }
+
+        // Update current track display
+        function updateCurrentTrack(index) {
+            currentIndex = index;
+
+            // Set initial display from cache or placeholder
+            const title = getTrackTitle(index);
+            currentTrackName.textContent = title;
+            miniTrackName.textContent = title;
+            duration = getTrackDuration(index);
+            timeTotal.textContent = formatTime(duration);
+
+            // Fetch fresh data from widget
+            fetchCurrentTrackInfo();
+
+            renderTracks();
+        }
+
+        // Update playing state
+        function updatePlayingState(playing) {
+            isPlaying = playing;
+            nowPlayingCard.classList.toggle('playing', playing);
+            updatePlayIcons();
+        }
+
+        // Mini player visibility
+        function checkMiniPlayer() {
+            const card = nowPlayingCard.getBoundingClientRect();
+            const shouldShow = card.bottom < 0 && currentIndex >= 0;
+            miniPlayer.classList.toggle('visible', shouldShow);
+        }
+
+        // Clear queue
+        clearQueueBtn.addEventListener('click', () => {
+            queue = [];
+            renderQueue();
+            renderTracks();
         });
 
-        // Fallback: hide loading after 4 seconds
-        setTimeout(() => {
-            loading.classList.add('hidden');
-        }, 4000);
+        // Shuffle toggle
+        shuffleBtn.addEventListener('click', () => {
+            isShuffled = !isShuffled;
+            shuffleBtn.classList.toggle('active', isShuffled);
+            if (isShuffled && queue.length > 0) {
+                shuffleArray(queue);
+                renderQueue();
+            }
+        });
+
+        // Initialize widget
+        widget.bind(SC.Widget.Events.READY, function () {
+            // Get initial sounds - may be incomplete for private playlists
+            widget.getSounds(function (sounds) {
+                tracks = sounds;
+                trackCount = sounds.length;
+                renderTracks();
+            });
+
+            widget.bind(SC.Widget.Events.PLAY, function () {
+                updatePlayingState(true);
+                // Fetch track info when play starts
+                fetchCurrentTrackInfo();
+            });
+
+            widget.bind(SC.Widget.Events.PAUSE, function () {
+                updatePlayingState(false);
+            });
+
+            widget.bind(SC.Widget.Events.PLAY_PROGRESS, function (e) {
+                // Use the duration from getDuration, not from track metadata
+                if (duration > 0) {
+                    const percent = (e.currentPosition / duration) * 100;
+                    progressFill.style.width = percent + '%';
+                    miniProgressFill.style.width = percent + '%';
+                    timeNow.textContent = formatTime(e.currentPosition);
+                }
+            });
+
+            widget.bind(SC.Widget.Events.FINISH, function () {
+                // Play next from queue or continue playlist
+                if (queue.length > 0) {
+                    const nextTrack = queue.shift();
+                    renderQueue();
+                    renderTracks();
+                    playTrack(nextTrack);
+                } else if (currentIndex < trackCount - 1) {
+                    widget.next();
+                }
+            });
+
+            widget.getCurrentSoundIndex(function (index) {
+                if (index >= 0) updateCurrentTrack(index);
+            });
+
+            // Poll for track changes
+            setInterval(() => {
+                widget.getCurrentSoundIndex(function (index) {
+                    if (index !== currentIndex && index >= 0) {
+                        updateCurrentTrack(index);
+                    }
+                });
+            }, 500);
+        });
+
+        // Controls
+        playBtn.addEventListener('click', () => widget.toggle());
+        miniPlayBtn.addEventListener('click', () => widget.toggle());
+        prevBtn.addEventListener('click', () => widget.prev());
+        nextBtn.addEventListener('click', () => {
+            if (queue.length > 0) {
+                const nextTrack = queue.shift();
+                renderQueue();
+                renderTracks();
+                playTrack(nextTrack);
+            } else {
+                widget.next();
+            }
+        });
+
+        // Scroll to top
+        miniExpand.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        miniInfo.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // Seek functionality
+        let isSeeking = false;
+
+        function seek(e) {
+            const rect = progressBar.getBoundingClientRect();
+            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+            const percent = Math.max(0, Math.min(1, x / rect.width));
+            progressFill.style.width = (percent * 100) + '%';
+            miniProgressFill.style.width = (percent * 100) + '%';
+            timeNow.textContent = formatTime(percent * duration);
+            return percent;
+        }
+
+        function performSeek(percent) {
+            if (duration > 0) {
+                const seekMs = percent * duration;
+                widget.seekTo(seekMs);
+            }
+        }
+
+        progressBar.addEventListener('mousedown', (e) => {
+            isSeeking = true;
+            const percent = seek(e);
+            performSeek(percent);
+        });
+
+        progressBar.addEventListener('touchstart', (e) => {
+            isSeeking = true;
+            seek(e);
+        }, { passive: true });
+
+        document.addEventListener('mousemove', (e) => { if (isSeeking) seek(e); });
+        document.addEventListener('touchmove', (e) => { if (isSeeking) seek(e); }, { passive: true });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isSeeking) {
+                const percent = seek(e);
+                performSeek(percent);
+                isSeeking = false;
+            }
+        });
+
+        document.addEventListener('touchend', () => {
+            if (isSeeking) {
+                const percent = parseFloat(progressFill.style.width) / 100;
+                performSeek(percent);
+                isSeeking = false;
+            }
+        });
+
+        // Scroll listener for mini player
+        window.addEventListener('scroll', checkMiniPlayer, { passive: true });
     </script>
 </body>
 
