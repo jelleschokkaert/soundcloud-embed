@@ -249,6 +249,12 @@
             position: relative;
         }
 
+        /* Remove transition during active seeking for smooth dragging */
+        body.seeking .progress-fill,
+        body.seeking .mini-progress-fill {
+            transition: none;
+        }
+
         /* Seek handle */
         .progress-fill::after {
             content: '';
@@ -800,6 +806,12 @@
         </iframe>
     </div>
 
+    <!-- Silent audio for Media Session API (triggers lock screen controls) -->
+    <audio id="silentAudio" loop preload="auto">
+        <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"
+            type="audio/wav">
+    </audio>
+
     <script src="https://w.soundcloud.com/player/api.js"></script>
     <script>
         // Hardcoded track names (SoundCloud API doesn't provide all metadata upfront)
@@ -945,6 +957,7 @@
 
         // State
         const widget = SC.Widget('scPlayer');
+        const silentAudio = document.getElementById('silentAudio');
         let tracks = [];
         let trackCount = TRACK_NAMES.length; // Use hardcoded count
         let currentIndex = -1;
@@ -1201,6 +1214,15 @@
             isPlaying = playing;
             nowPlayingCard.classList.toggle('playing', playing);
             updatePlayIcons();
+
+            // Sync silent audio for Media Session API (triggers lock screen controls)
+            if (silentAudio) {
+                if (playing) {
+                    silentAudio.play().catch(() => { });
+                } else {
+                    silentAudio.pause();
+                }
+            }
         }
 
         // Mini player visibility
@@ -1315,6 +1337,17 @@
 
         // Seek functionality
         let isSeeking = false;
+        let lastSeekPercent = 0;
+
+        function startSeeking() {
+            isSeeking = true;
+            document.body.classList.add('seeking');
+        }
+
+        function endSeeking() {
+            isSeeking = false;
+            document.body.classList.remove('seeking');
+        }
 
         function seek(e) {
             const rect = progressBar.getBoundingClientRect();
@@ -1323,6 +1356,7 @@
             progressFill.style.width = (percent * 100) + '%';
             miniProgressFill.style.width = (percent * 100) + '%';
             timeNow.textContent = formatTime(percent * duration);
+            lastSeekPercent = percent;
             return percent;
         }
 
@@ -1333,14 +1367,15 @@
             }
         }
 
+        // Mouse events - seek on release only
         progressBar.addEventListener('mousedown', (e) => {
-            isSeeking = true;
-            const percent = seek(e);
-            performSeek(percent);
+            startSeeking();
+            seek(e);
         });
 
+        // Touch events - seek on release only for smoother mobile experience
         progressBar.addEventListener('touchstart', (e) => {
-            isSeeking = true;
+            startSeeking();
             seek(e);
         }, { passive: true });
 
@@ -1351,15 +1386,21 @@
             if (isSeeking) {
                 const percent = seek(e);
                 performSeek(percent);
-                isSeeking = false;
+                endSeeking();
             }
         });
 
         document.addEventListener('touchend', () => {
             if (isSeeking) {
-                const percent = parseFloat(progressFill.style.width) / 100;
-                performSeek(percent);
-                isSeeking = false;
+                performSeek(lastSeekPercent);
+                endSeeking();
+            }
+        });
+
+        // Cancel seeking if touch is cancelled
+        document.addEventListener('touchcancel', () => {
+            if (isSeeking) {
+                endSeeking();
             }
         });
 
