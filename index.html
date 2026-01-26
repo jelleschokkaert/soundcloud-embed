@@ -817,7 +817,6 @@
         // Hardcoded track names (SoundCloud API doesn't provide all metadata upfront)
         const TRACK_NAMES = [
             "Dancin (extended/looped)(Aaron Smith - Dancin remix)",
-            "Praise The Lord (Da Shine) (Durdenhauer Edit) [feat. Skepta]",
             "Save Your Tears (southstar remix)",
             "A New Kind Of 💕 (southstar remix)",
             "Silence",
@@ -961,6 +960,8 @@
             "My love - Benleh",
             "Non Stop - Trance Remix (Ronnie Flex)",
             "Last Christmas - Terra Twins Remix",
+            "Dominate - Massagio edit",
+            "Get into the music - DJ Discotoff",
         ];
 
         // State
@@ -1154,6 +1155,15 @@
             }
         }
 
+        function getRandomTrackIndex() {
+            if (trackCount <= 1) return currentIndex;
+            let randomIndex;
+            do {
+                randomIndex = Math.floor(Math.random() * trackCount);
+            } while (randomIndex === currentIndex);
+            return randomIndex;
+        }
+
         // Play track
         function playTrack(index) {
             widget.skip(index);
@@ -1262,7 +1272,9 @@
             // Get initial sounds - may be incomplete for private playlists
             widget.getSounds(function (sounds) {
                 tracks = sounds;
-                trackCount = sounds.length;
+                if (sounds.length > 0) {
+                    trackCount = sounds.length;
+                }
                 renderTracks();
             });
 
@@ -1295,11 +1307,10 @@
                     playTrack(nextTrack);
                 } else if (isShuffled) {
                     // Shuffle mode: pick random track (avoid current)
-                    let randomIndex;
-                    do {
-                        randomIndex = Math.floor(Math.random() * trackCount);
-                    } while (randomIndex === currentIndex && trackCount > 1);
-                    playTrack(randomIndex);
+                    const randomIndex = getRandomTrackIndex();
+                    if (randomIndex !== currentIndex) {
+                        playTrack(randomIndex);
+                    }
                 } else if (currentIndex < trackCount - 1) {
                     widget.next();
                 }
@@ -1329,6 +1340,11 @@
                 renderQueue();
                 renderTracks();
                 playTrack(nextTrack);
+            } else if (isShuffled) {
+                const randomIndex = getRandomTrackIndex();
+                if (randomIndex !== currentIndex) {
+                    playTrack(randomIndex);
+                }
             } else {
                 widget.next();
             }
