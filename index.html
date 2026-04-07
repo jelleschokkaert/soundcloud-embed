@@ -508,23 +508,28 @@
             font-size: 0.65rem;
         }
 
-        /* ========== COMING UP (PLAYLIST PREVIEW) ========== */
-        .fs-up-next {
+        /* ========== TRACK BROWSER ========== */
+        .fs-track-browser {
             flex-shrink: 0;
             max-height: 30vh;
-            overflow-y: auto;
-            overscroll-behavior: contain;
-            margin-top: 0.5rem;
-            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        .up-next-section {
+        .track-browser-section {
             margin: 0;
             background: transparent;
             border: none;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
-        .up-next-header {
+        .track-browser-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             padding: 0.35rem 0;
             min-height: 28px;
             font-size: 0.65rem;
@@ -535,51 +540,82 @@
             border-bottom: 1px solid var(--border);
         }
 
-        .up-next-list {
-            max-height: 26vh;
+        .track-browser-count {
+            font-weight: 400;
+            color: var(--text-dim);
         }
 
-        .up-next-item {
+        .track-browser-list {
+            flex: 1;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        .track-browser-item {
             display: flex;
             align-items: center;
             gap: 0.5rem;
             padding: 0.3rem 0.25rem;
-            min-height: 36px;
+            min-height: 38px;
             cursor: pointer;
             transition: background 0.1s;
             border-bottom: 1px solid var(--border);
         }
 
-        .up-next-item:last-child {
+        .track-browser-item:last-child {
             border-bottom: none;
         }
 
-        .up-next-item:active {
+        .track-browser-item:active {
             background: var(--bg-active);
         }
 
-        .up-next-item.playing {
+        .track-browser-item.in-queue {
+            opacity: 0.6;
+        }
+
+        .track-browser-item.in-queue .browser-add-icon {
             color: var(--accent);
         }
 
-        .up-next-item.playing .up-next-item-title {
-            font-weight: 600;
-        }
-
-        .up-next-item-num {
+        .browser-track-num {
             font-size: 0.65rem;
             color: var(--text-muted);
-            width: 16px;
+            width: 20px;
             text-align: center;
             flex-shrink: 0;
         }
 
-        .up-next-item-title {
+        .browser-track-info {
             flex: 1;
+            min-width: 0;
+        }
+
+        .browser-track-title {
             font-size: 0.72rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .browser-track-duration {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+        }
+
+        .browser-add-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+            flex-shrink: 0;
+        }
+
+        .browser-add-icon svg {
+            width: 16px;
+            height: 16px;
         }
 
         /* ========== QUEUE SECTION ========== */
@@ -1181,10 +1217,13 @@
                     <div class="queue-list" id="fsQueueList"></div>
                 </div>
             </div>
-            <div class="fs-up-next">
-                <div class="up-next-section">
-                    <div class="up-next-header">Coming Up</div>
-                    <div class="up-next-list" id="fsUpNextList"></div>
+            <div class="fs-track-browser">
+                <div class="track-browser-section">
+                    <div class="track-browser-header">
+                        <span>Add to Queue</span>
+                        <span class="track-browser-count" id="trackBrowserCount">0 tracks</span>
+                    </div>
+                    <div class="track-browser-list" id="fsTrackBrowserList"></div>
                 </div>
             </div>
         </div>
@@ -1466,7 +1505,8 @@
         const fsQueueHeader = document.getElementById('fsQueueHeader');
         const fsQueueList = document.getElementById('fsQueueList');
         const fsQueueBadge = document.getElementById('fsQueueBadge');
-        const fsUpNextList = document.getElementById('fsUpNextList');
+        const fsTrackBrowserList = document.getElementById('fsTrackBrowserList');
+        const trackBrowserCount = document.getElementById('trackBrowserCount');
         const miniPlayer = document.getElementById('miniPlayer');
         const miniPlayBtn = document.getElementById('miniPlayBtn');
         const miniPlayIcon = document.getElementById('miniPlayIcon');
@@ -1733,7 +1773,7 @@
             // Update both list containers with same content
             queueList.innerHTML = queueHtml;
             fsQueueList.innerHTML = queueHtml;
-            renderUpNext();
+            renderTrackBrowser();
         }
 
         // Queue event delegation (tap to play, X to remove)
@@ -1768,12 +1808,20 @@
             }
         });
 
-        // fsUpNextList click handler (play track)
-        fsUpNextList.addEventListener('click', (e) => {
-            const item = e.target.closest('.up-next-item');
-            if (item) {
-                playTrack(parseInt(item.dataset.index));
+        // fsTrackBrowserList click handler (add to queue)
+        fsTrackBrowserList.addEventListener('click', (e) => {
+            const item = e.target.closest('.track-browser-item');
+            if (!item) return;
+            
+            const index = parseInt(item.dataset.index);
+            if (queue.includes(index)) {
+                showToast('Already in queue');
+                return;
             }
+            queue.push(index);
+            showToast('Added to queue');
+            renderQueue(); renderTrackBrowser();
+            if ('vibrate' in navigator) navigator.vibrate(10);
         });
 
         // ========== QUEUE DRAG-TO-REORDER ==========
@@ -1993,18 +2041,6 @@
             if (playOrderIndex === -1) playOrderIndex = 0;
         }
 
-        function getUpNextTracks(n) {
-            const results = [];
-            let tempIndex = playOrderIndex + 1;
-            
-            // Wrap around if needed to get n tracks
-            for (let i = 0; results.length < n; i++) {
-                const idx = (tempIndex + i) % playOrder.length;
-                results.push(playOrder[idx]);
-            }
-            return results;
-        }
-
         // Centrale functie om het volgende nummer in de volgorde te spelen
         function playNextInOrder() {
             if (queue.length > 0) {
@@ -2025,14 +2061,34 @@
             playTrack(playOrder[actualIndex]);
         }
 
-        function renderUpNext() {
-            if (!fsUpNextList) return;
-            const tracks = getUpNextTracks(10);
-            fsUpNextList.innerHTML = tracks.map((trackIndex, i) => `
-                <div class="up-next-item ${trackIndex === currentIndex ? 'playing' : ''}" data-index="${trackIndex}">
-                    <span class="up-next-item-num">${i + 1}</span>
-                    <span class="up-next-item-title">${escapeHTML(getTrackTitle(trackIndex))}</span>
-                </div>`).join('');
+        function renderTrackBrowser() {
+            if (!fsTrackBrowserList) return;
+            
+            trackBrowserCount.textContent = trackCount + ' tracks';
+            
+            // Create shuffled indices array (always random on each call)
+            const indices = Array.from({ length: trackCount }, (_, i) => i).sort(() => Math.random() - 0.5);
+            
+            fsTrackBrowserList.innerHTML = indices.map((originalIndex) => {
+                const isInQueue = queue.includes(originalIndex);
+                const title = escapeHTML(getTrackTitle(originalIndex));
+                const dur = getTrackDuration(originalIndex);
+                const displayNum = indices.indexOf(originalIndex) + 1;
+                return `
+                    <div class="track-browser-item ${isInQueue ? 'in-queue' : ''}" data-index="${originalIndex}">
+                        <span class="browser-track-num">${displayNum}</span>
+                        <div class="browser-track-info">
+                            <div class="browser-track-title">${title}</div>
+                            ${dur ? `<div class="browser-track-duration">${dur}</div>` : ''}
+                        </div>
+                        <div class="browser-add-icon">
+                            ${isInQueue 
+                                ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>'
+                                : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>'
+                            }
+                        </div>
+                    </div>`;
+            }).join('');
         }
 
         // ========== PLAYBACK ==========
@@ -2083,7 +2139,7 @@
             if (fsOpen) syncFullscreenState();
             fetchCurrentTrackInfo();
             renderTracks();
-            if (fsOpen) renderUpNext();
+            if (fsOpen) renderTrackBrowser();
             // Scroll active track into view if off-screen
             const activeWrapper = trackListEl.querySelector(`.track-item-wrapper[data-index="${index}"]`);
             if (activeWrapper) {
@@ -2118,7 +2174,7 @@
                 history.pushState({ fsOpen: true }, '', '');
             }
             syncFullscreenState();
-            renderUpNext();
+            renderTrackBrowser();
         }
 
         function closeFullscreen() {
@@ -2142,8 +2198,8 @@
         fsShuffleBtn.addEventListener('click', () => {
             isShuffled = !isShuffled;
             fsShuffleBtn.classList.toggle('shuffle-active', isShuffled);
-            generatePlayOrder(); // Herschik de lijst op basis van de toggle
-            renderUpNext();
+            generatePlayOrder();
+            renderTrackBrowser();
         });
 
         // Fullscreen swipe-down to close (optimized)
