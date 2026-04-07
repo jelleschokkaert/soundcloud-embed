@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Music Player</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,16 +17,20 @@
         }
 
         :root {
-            --bg: #0d0d0f;
-            --bg-card: #18181b;
-            --bg-active: #27272a;
-            --accent: #ff5500;
-            --accent-dim: rgba(255, 85, 0, 0.15);
-            --accent-glow: rgba(255, 85, 0, 0.4);
+            --bg: #0a0a0b;
+            --bg-card: #141416;
+            --bg-active: #1f1f23;
+            --bg-elevated: #1a1a1e;
+            --accent: #8B5CF6;
+            --accent-dim: rgba(139, 92, 246, 0.15);
+            --accent-glow: rgba(139, 92, 246, 0.4);
+            --accent-bright: #A78BFA;
             --text: #fafafa;
-            --text-dim: #71717a;
+            --text-dim: #9ca3af;
+            --text-muted: #6b7280;
             --border: #27272a;
             --success: #22c55e;
+            --danger: #ef4444;
         }
 
         html,
@@ -37,226 +41,329 @@
             min-height: 100vh;
             min-height: 100dvh;
             overflow-x: hidden;
+            overscroll-behavior: contain;
         }
 
-        /* Header */
-        .header {
+        body.fs-open {
+            overflow: hidden;
+        }
+
+        /* ========== COMPACT NOW-PLAYING BAR ========== */
+        .now-playing-bar {
             position: sticky;
             top: 0;
+            z-index: 100;
             background: var(--bg-card);
             border-bottom: 1px solid var(--border);
-            z-index: 100;
-            padding: 1rem;
-            padding-top: max(1rem, env(safe-area-inset-top));
+            padding-top: max(0.5rem, env(safe-area-inset-top));
+        }
+
+        .now-playing-bar.playing {
+            border-bottom-color: var(--accent);
+        }
+
+        .now-playing-bar-content {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            height: 56px;
         }
 
-        .logo {
-            width: 36px;
-            height: 36px;
-            background: var(--accent);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .logo svg {
-            width: 20px;
-            height: 20px;
-            fill: white;
-        }
-
-        .header h1 {
-            font-size: 1.1rem;
-            font-weight: 600;
+        .now-playing-bar-info {
             flex: 1;
-        }
-
-        /* Now Playing Card */
-        .now-playing-card {
-            background: var(--bg-card);
-            margin: 1rem;
-            border-radius: 16px;
-            padding: 1.25rem;
-            border: 1px solid var(--border);
-            position: relative;
-            overflow: hidden;
-
-        }
-
-        .now-playing-card.playing {
-            border-color: var(--accent);
-            box-shadow: 0 0 30px var(--accent-glow);
-        }
-
-        .now-playing-card.playing::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, var(--accent-dim) 0%, transparent 50%);
-            animation: pulse-bg 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse-bg {
-
-            0%,
-            100% {
-                opacity: 0.3;
-            }
-
-            50% {
-                opacity: 0.6;
-            }
-        }
-
-        .now-playing-content {
-            position: relative;
-            z-index: 1;
-        }
-
-        .now-playing-label {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--accent);
-            margin-bottom: 0.5rem;
+            min-width: 0;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
-        .equalizer {
+        .now-playing-bar-track {
+            font-size: 0.95rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .now-playing-bar.playing .now-playing-bar-track {
+            color: var(--accent);
+        }
+
+        .now-playing-bar-controls {
             display: flex;
+            align-items: center;
+            gap: 0.15rem;
+            flex-shrink: 0;
+        }
+
+        .bar-control-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: transform 0.1s ease;
+        }
+
+        .bar-control-btn:active {
+            transform: scale(0.9);
+            background: var(--bg-active);
+        }
+
+        .bar-control-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .bar-play-btn {
+            background: var(--accent);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+        }
+
+        .bar-play-btn:active {
+            background: #7C3AED;
+        }
+
+        .bar-play-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .bar-expand-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .bar-expand-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* ========== THIN PROGRESS BAR (compact bar) ========== */
+        .now-playing-bar-progress {
+            height: 20px;
+            display: flex;
+            align-items: flex-start;
+            cursor: pointer;
+            touch-action: none;
+            padding: 0 1rem;
+        }
+
+        .bar-progress-track {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bar-progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            width: 100%;
+            transform: scaleX(0);
+            transform-origin: left center;
+            will-change: transform;
+        }
+
+        body.seeking .bar-progress-fill,
+        body.seeking .mini-progress-fill {
+            transition: none;
+        }
+
+        .now-playing-bar-progress:active .bar-progress-track {
+            height: 8px;
+            transition: height 0.1s ease;
+        }
+
+        /* ========== EQUALIZER BARS ========== */
+        .equalizer {
+            display: none;
             align-items: flex-end;
             gap: 2px;
-            height: 12px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .playing .equalizer {
+            display: flex;
         }
 
         .eq-bar {
             width: 3px;
             background: var(--accent);
             border-radius: 1px;
+            height: 40%;
+            transform-origin: bottom center;
         }
 
         .playing .eq-bar {
             animation: eq 0.5s ease-in-out infinite alternate;
         }
 
-        .eq-bar:nth-child(1) {
-            height: 40%;
-            animation-delay: 0s;
-        }
-
-        .eq-bar:nth-child(2) {
-            height: 70%;
-            animation-delay: 0.1s;
-        }
-
-        .eq-bar:nth-child(3) {
-            height: 50%;
-            animation-delay: 0.2s;
-        }
-
-        .eq-bar:nth-child(4) {
-            height: 90%;
-            animation-delay: 0.15s;
-        }
+        .eq-bar:nth-child(1) { animation-delay: 0s; }
+        .eq-bar:nth-child(2) { animation-delay: 0.1s; }
+        .eq-bar:nth-child(3) { animation-delay: 0.2s; }
+        .eq-bar:nth-child(4) { animation-delay: 0.15s; }
 
         @keyframes eq {
-            from {
-                height: 20%;
-            }
-
-            to {
-                height: 100%;
-            }
+            from { transform: scaleY(0.3); }
+            to { transform: scaleY(1.5); }
         }
 
-        .current-track-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        /* ========== FULLSCREEN PLAYER ========== */
+        .fullscreen-player {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(2rem, env(safe-area-inset-bottom));
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+            will-change: transform;
         }
 
-        /* Progress Bar */
-        .progress-container {
+        .fullscreen-player.open {
+            transform: translateY(0);
+        }
+
+        .fs-drag-handle {
+            width: 40px;
+            height: 5px;
+            background: var(--text-dim);
+            border-radius: 3px;
+            margin: 0 auto 1.5rem;
+            opacity: 0.7;
+        }
+
+        .fs-close-btn {
+            position: absolute;
+            top: max(1rem, env(safe-area-inset-top));
+            right: 1rem;
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        .fs-close-btn:active {
+            background: var(--bg-active);
+        }
+
+        .fs-close-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+        }
+
+        .fs-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 2.5rem;
+        }
+
+        .fs-artwork {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .fs-artwork svg {
+            opacity: 0.12;
+        }
+
+        .playing .fs-artwork svg {
+            animation: pulse-art 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-art {
+            0%, 100% { opacity: 0.1; transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(1.03); }
+        }
+
+        .fs-track-info {
+            text-align: center;
+            padding: 0 1rem;
+        }
+
+        .fs-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--accent);
             margin-bottom: 1rem;
         }
 
-        .time {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            min-width: 36px;
-            font-variant-numeric: tabular-nums;
+        .fs-track-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
 
-        .time.end {
-            text-align: right;
+        .fs-progress {
+            width: 100%;
         }
 
-        .progress-bar {
-            flex: 1;
-            height: 48px;
+        .fs-progress-bar {
+            height: 32px;
             display: flex;
             align-items: center;
             cursor: pointer;
             touch-action: none;
-            position: relative;
         }
 
-        .progress-track {
+        .fs-progress-track {
             width: 100%;
-            height: 32px;
+            height: 4px;
             background: var(--bg-active);
-            border-radius: 6px;
-            overflow: hidden;
+            border-radius: 2px;
+            overflow: visible;
             position: relative;
         }
 
-        /* Waveform-style bars */
-        .progress-track::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: repeating-linear-gradient(90deg,
-                    transparent 0px,
-                    transparent 2px,
-                    var(--border) 2px,
-                    var(--border) 4px);
-            mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,16 Q5,8 10,16 T20,16 T30,16 T40,16 T50,16 T60,16 T70,16 T80,16 T90,16 T100,16 L100,32 L0,32 Z' fill='white'/%3E%3C/svg%3E");
-            -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,16 Q5,8 10,16 T20,16 T30,16 T40,16 T50,16 T60,16 T70,16 T80,16 T90,16 T100,16 L100,32 L0,32 Z' fill='white'/%3E%3C/svg%3E");
-            mask-size: 100% 100%;
-            -webkit-mask-size: 100% 100%;
-            opacity: 0.5;
-        }
-
-        .progress-fill {
+        .fs-progress-fill {
             height: 100%;
-            background: linear-gradient(180deg, var(--accent) 0%, #cc4400 100%);
-            border-radius: 6px;
+            background: var(--accent);
+            border-radius: 2px;
             width: 0%;
-            transition: width 0.1s linear;
             position: relative;
         }
 
-        /* Remove transition during active seeking for smooth dragging */
-        body.seeking .progress-fill,
-        body.seeking .mini-progress-fill {
-            transition: none;
-        }
-
-        /* Seek handle */
-        .progress-fill::after {
+        .fs-progress-fill::after {
             content: '';
             position: absolute;
             right: -8px;
@@ -267,25 +374,37 @@
             background: white;
             border-radius: 50%;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            transition: opacity 0.15s;
         }
 
-        .progress-bar:active .progress-fill::after {
-            width: 20px;
-            height: 20px;
-            right: -10px;
+        .fs-progress-bar:active .fs-progress-fill::after,
+        .fullscreen-player.seeking .fs-progress-fill::after {
+            opacity: 1;
         }
 
-        /* Controls */
-        .controls {
+        .fs-times {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+
+        .fs-time {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .fs-controls {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 1rem;
+            gap: 1.25rem;
         }
 
-        .control-btn {
-            width: 44px;
-            height: 44px;
+        .fs-control-btn {
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             border: none;
             background: transparent;
@@ -294,47 +413,52 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: transform 0.1s ease;
         }
 
-        .control-btn:active {
+        .fs-control-btn:active {
             transform: scale(0.9);
             background: var(--bg-active);
         }
 
-        .control-btn.play {
-            width: 56px;
-            height: 56px;
+        .fs-control-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: currentColor;
+        }
+
+        .fs-play-btn {
+            width: 64px;
+            height: 64px;
             background: var(--accent);
         }
 
-        .control-btn.play:active {
-            background: #e64d00;
+        .fs-play-btn:active {
+            background: #7C3AED;
         }
 
-        .control-btn.shuffle.active {
+        .fs-play-btn svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .fs-control-btn.shuffle-active {
             color: var(--accent);
             background: var(--accent-dim);
         }
 
-        .control-btn svg {
-            width: 24px;
-            height: 24px;
-            fill: currentColor;
-        }
-
-        .control-btn.play svg {
-            width: 28px;
-            height: 28px;
-        }
-
-        /* Queue Section */
+        /* ========== QUEUE SECTION ========== */
         .queue-section {
-            margin: 0 1rem 1rem;
+            margin: 0.75rem 1rem;
             background: var(--bg-card);
             border-radius: 12px;
             border: 1px solid var(--border);
             overflow: hidden;
+            transition: opacity 0.2s, max-height 0.3s ease;
+        }
+
+        .queue-section.hidden {
+            display: none;
         }
 
         .queue-header {
@@ -344,6 +468,11 @@
             padding: 0.75rem 1rem;
             border-bottom: 1px solid var(--border);
             cursor: pointer;
+            min-height: 44px;
+        }
+
+        .queue-header:active {
+            background: var(--bg-active);
         }
 
         .queue-title {
@@ -361,90 +490,150 @@
             padding: 0.15rem 0.5rem;
             border-radius: 10px;
             font-weight: 600;
+            min-width: 20px;
+            text-align: center;
         }
 
-        .queue-clear {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0.25rem 0.5rem;
+        .queue-chevron {
+            width: 20px;
+            height: 20px;
+            fill: var(--text-dim);
+            transition: transform 0.2s ease;
         }
 
-        .queue-clear:hover {
-            color: var(--accent);
+        .queue-section.collapsed .queue-chevron {
+            transform: rotate(-90deg);
+        }
+
+        .queue-section.collapsed .queue-list {
+            display: none;
+        }
+
+        .queue-section.collapsed .queue-header {
+            border-bottom: none;
         }
 
         .queue-list {
-            max-height: 200px;
+            max-height: 260px;
             overflow-y: auto;
-        }
-
-        .queue-list:empty::after {
-            content: 'Queue is empty. Tap + on tracks to add.';
-            display: block;
-            padding: 1rem;
-            text-align: center;
-            color: var(--text-dim);
-            font-size: 0.85rem;
+            overscroll-behavior: contain;
+            position: relative;
         }
 
         .queue-item {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 1rem;
+            gap: 0.5rem;
+            padding: 0.5rem 0.5rem 0.5rem 0.25rem;
             border-bottom: 1px solid var(--border);
+            min-height: 48px;
+            background: var(--bg-card);
+            position: relative;
+            z-index: 1;
+            transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), background 0.15s, box-shadow 0.2s;
         }
 
         .queue-item:last-child {
             border-bottom: none;
         }
 
-        .queue-item-num {
-            font-size: 0.8rem;
+        .queue-item.dragging {
+            background: var(--bg-elevated);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            z-index: 10;
+            border-radius: 8px;
+            border-bottom-color: transparent;
+            transform: scale(1.02);
+            transition: box-shadow 0.2s, background 0.15s;
+        }
+
+        .queue-item.drag-shift-down {
+            transform: translateY(48px);
+        }
+
+        .queue-item.drag-shift-up {
+            transform: translateY(-48px);
+        }
+
+        .queue-drag-handle {
+            width: 32px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: grab;
+            touch-action: none;
+            color: var(--text-muted);
+        }
+
+        .queue-drag-handle:active {
+            cursor: grabbing;
             color: var(--text-dim);
-            width: 20px;
+        }
+
+        .queue-drag-handle svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .queue-item-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.1rem 0;
+        }
+
+        .queue-item-num {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            width: 16px;
+            text-align: center;
+            flex-shrink: 0;
         }
 
         .queue-item-title {
             flex: 1;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .queue-remove {
-            width: 28px;
-            height: 28px;
+            width: 44px;
+            height: 44px;
             border: none;
             background: transparent;
-            color: var(--text-dim);
+            color: var(--text-muted);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
+            flex-shrink: 0;
+            transition: color 0.15s;
         }
 
-        .queue-remove:hover {
-            background: rgba(255, 0, 0, 0.1);
-            color: #ff4444;
+        .queue-remove:active {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
         }
 
-        /* Track List */
+        /* ========== TRACK LIST ========== */
         .track-list-section {
             padding: 0 1rem 2rem;
         }
 
         .section-title {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 600;
             color: var(--text-dim);
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
             margin-bottom: 0.75rem;
         }
 
@@ -455,30 +644,77 @@
             overflow: hidden;
         }
 
+        .track-item-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-bottom: 1px solid var(--border);
+            touch-action: pan-y;
+        }
+
+        .track-item-wrapper:last-child {
+            border-bottom: none;
+        }
+
+        .track-item-action {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+            gap: 0.3rem;
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .track-item-wrapper.swiping .track-item-action {
+            opacity: 1;
+        }
+
+        .track-item-action svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        .track-item-action.queue-action {
+            left: 0;
+            background: var(--accent);
+        }
+
+        .track-item-action.remove-action {
+            right: 0;
+            background: var(--danger);
+        }
+
         .track-item {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            padding: 0.875rem 1rem;
-            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1rem;
             cursor: pointer;
             transition: background 0.15s ease;
-        }
-
-        .track-item:last-child {
-            border-bottom: none;
+            position: relative;
+            background: var(--bg-card);
+            min-height: 52px;
         }
 
         .track-item:active {
-            background: var(--bg-active);
+            background: var(--accent-dim);
+            transition: background 0s;
         }
 
         .track-item.playing {
-            background: var(--accent-dim);
+            background: #1a1528;
         }
 
         .track-item.in-queue {
-            background: rgba(34, 197, 94, 0.1);
+            background: #141a16;
         }
 
         .track-number {
@@ -529,11 +765,12 @@
         .track-duration {
             font-size: 0.8rem;
             color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
         }
 
         .add-to-queue {
-            width: 32px;
-            height: 32px;
+            width: 44px;
+            height: 44px;
             border: none;
             background: transparent;
             color: var(--text-dim);
@@ -542,10 +779,11 @@
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            transition: all 0.15s ease;
+            flex-shrink: 0;
+            transition: color 0.15s ease;
         }
 
-        .add-to-queue:hover {
+        .add-to-queue:active {
             background: var(--accent-dim);
             color: var(--accent);
         }
@@ -560,7 +798,7 @@
             fill: currentColor;
         }
 
-        /* Mini Player */
+        /* ========== MINI PLAYER ========== */
         .mini-player {
             position: fixed;
             bottom: 0;
@@ -583,8 +821,8 @@
         }
 
         .mini-play-btn {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             border: none;
             background: var(--accent);
@@ -594,6 +832,10 @@
             justify-content: center;
             cursor: pointer;
             flex-shrink: 0;
+        }
+
+        .mini-play-btn:active {
+            background: #7C3AED;
         }
 
         .mini-play-btn svg {
@@ -617,21 +859,24 @@
         }
 
         .mini-progress {
-            height: 3px;
-            background: var(--border);
-            border-radius: 1.5px;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
             overflow: hidden;
         }
 
         .mini-progress-fill {
             height: 100%;
             background: var(--accent);
-            width: 0%;
+            width: 100%;
+            transform: scaleX(0);
+            transform-origin: left center;
+            will-change: transform;
         }
 
         .mini-expand {
-            width: 36px;
-            height: 36px;
+            width: 44px;
+            height: 44px;
             border: none;
             background: transparent;
             color: var(--text-dim);
@@ -647,7 +892,32 @@
             fill: currentColor;
         }
 
-        /* Loading State */
+        /* ========== SWIPE TOAST ========== */
+        .swipe-toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--bg-elevated);
+            color: var(--text);
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 400;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .swipe-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ========== LOADING ========== */
         .loading {
             display: flex;
             flex-direction: column;
@@ -668,12 +938,9 @@
         }
 
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
-        /* Hidden iframe */
         .hidden-player {
             position: absolute;
             width: 1px;
@@ -683,85 +950,102 @@
             pointer-events: none;
         }
 
-        /* Bottom padding for mini player */
         .bottom-spacer {
-            height: 80px;
+            height: calc(80px + env(safe-area-inset-bottom, 0px));
         }
     </style>
 </head>
 
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="logo">
-            <svg viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-            </svg>
-        </div>
-        <h1>Music Player</h1>
-    </header>
-
-    <!-- Now Playing Card -->
-    <div class="now-playing-card" id="nowPlayingCard">
-        <div class="now-playing-content">
-            <div class="now-playing-label">
+    <!-- Compact Now Playing Bar -->
+    <div class="now-playing-bar" id="nowPlayingBar">
+        <div class="now-playing-bar-content">
+            <div class="now-playing-bar-info">
                 <div class="equalizer" id="eqBars">
                     <div class="eq-bar"></div>
                     <div class="eq-bar"></div>
                     <div class="eq-bar"></div>
                     <div class="eq-bar"></div>
                 </div>
-                <span>Now Playing</span>
+                <div class="now-playing-bar-track" id="currentTrackName">Select a track to play</div>
             </div>
-            <div class="current-track-name" id="currentTrackName">Select a track to play</div>
+            <div class="now-playing-bar-controls">
+                <button class="bar-control-btn" id="prevBtn" aria-label="Previous">
+                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                </button>
+                <button class="bar-control-btn bar-play-btn" id="playBtn" aria-label="Play">
+                    <svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg>
+                </button>
+                <button class="bar-control-btn" id="nextBtn" aria-label="Next">
+                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                </button>
+            </div>
+            <button class="bar-expand-btn" id="expandBtn" aria-label="Expand player">
+                <svg viewBox="0 0 24 24"><path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/></svg>
+            </button>
+        </div>
+        <div class="now-playing-bar-progress" id="barProgressContainer">
+            <div class="bar-progress-track">
+                <div class="bar-progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+    </div>
 
-            <div class="progress-container">
-                <span class="time" id="timeNow">0:00</span>
-                <div class="progress-bar" id="progressBar">
-                    <div class="progress-track">
-                        <div class="progress-fill" id="progressFill"></div>
+    <!-- Full-Screen Player -->
+    <div class="fullscreen-player" id="fullscreenPlayer">
+        <div class="fs-drag-handle"></div>
+        <button class="fs-close-btn" id="fsCloseBtn" aria-label="Close">
+            <svg viewBox="0 0 24 24"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>
+        </button>
+        <div class="fs-content">
+            <div class="fs-artwork">
+                <svg viewBox="0 0 120 120" width="120" height="120">
+                    <circle cx="60" cy="60" r="56" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+                    <circle cx="60" cy="60" r="36" fill="none" stroke="var(--accent)" stroke-width="1"/>
+                    <circle cx="60" cy="60" r="18" fill="var(--accent)"/>
+                </svg>
+            </div>
+            <div class="fs-track-info">
+                <div class="fs-label">Now Playing</div>
+                <div class="fs-track-name" id="fsTrackName">-</div>
+            </div>
+            <div class="fs-progress">
+                <div class="fs-progress-bar" id="fsProgressBar">
+                    <div class="fs-progress-track">
+                        <div class="fs-progress-fill" id="fsProgressFill"></div>
                     </div>
                 </div>
-                <span class="time end" id="timeTotal">0:00</span>
+                <div class="fs-times">
+                    <span class="fs-time" id="fsTimeNow">0:00</span>
+                    <span class="fs-time" id="fsTimeTotal">0:00</span>
+                </div>
             </div>
-
-            <div class="controls">
-                <button class="control-btn shuffle" id="shuffleBtn" aria-label="Shuffle">
-                    <svg viewBox="0 0 24 24">
-                        <path
-                            d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z" />
-                    </svg>
+            <div class="fs-controls">
+                <button class="fs-control-btn" id="fsShuffleBtn" aria-label="Shuffle">
+                    <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
                 </button>
-                <button class="control-btn" id="prevBtn" aria-label="Previous">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
-                    </svg>
+                <button class="fs-control-btn" id="fsPrevBtn" aria-label="Previous">
+                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
                 </button>
-                <button class="control-btn play" id="playBtn" aria-label="Play">
-                    <svg viewBox="0 0 24 24" id="playIcon">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
+                <button class="fs-control-btn fs-play-btn" id="fsPlayBtn" aria-label="Play">
+                    <svg viewBox="0 0 24 24" id="fsPlayIcon"><path d="M8 5v14l11-7z"/></svg>
                 </button>
-                <button class="control-btn" id="nextBtn" aria-label="Next">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
-                    </svg>
+                <button class="fs-control-btn" id="fsNextBtn" aria-label="Next">
+                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
                 </button>
-                <button class="control-btn" style="visibility: hidden;">
-                    <svg viewBox="0 0 24 24"></svg>
-                </button>
+                <div style="width:52px;height:52px;" aria-hidden="true"></div>
             </div>
         </div>
     </div>
 
     <!-- Queue Section -->
-    <div class="queue-section" id="queueSection">
+    <div class="queue-section hidden" id="queueSection">
         <div class="queue-header" id="queueHeader">
             <div class="queue-title">
                 <span>Up Next</span>
                 <span class="queue-badge" id="queueBadge">0</span>
             </div>
-            <button class="queue-clear" id="clearQueue">Clear</button>
+            <svg class="queue-chevron" viewBox="0 0 24 24"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>
         </div>
         <div class="queue-list" id="queueList"></div>
     </div>
@@ -782,9 +1066,7 @@
     <!-- Mini Player -->
     <div class="mini-player" id="miniPlayer">
         <button class="mini-play-btn" id="miniPlayBtn">
-            <svg viewBox="0 0 24 24" id="miniPlayIcon">
-                <path d="M8 5v14l11-7z" />
-            </svg>
+            <svg viewBox="0 0 24 24" id="miniPlayIcon"><path d="M8 5v14l11-7z"/></svg>
         </button>
         <div class="mini-info" id="miniInfo">
             <div class="mini-track-name" id="miniTrackName">-</div>
@@ -793,39 +1075,39 @@
             </div>
         </div>
         <button class="mini-expand" id="miniExpand" aria-label="Expand">
-            <svg viewBox="0 0 24 24">
-                <path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z" />
-            </svg>
+            <svg viewBox="0 0 24 24"><path d="M12 8l-6 6 1.41 1.41L12 10.83l4.59 4.58L18 14z"/></svg>
         </button>
     </div>
 
+    <!-- Swipe Toast -->
+    <div class="swipe-toast" id="swipeToast"></div>
+
     <!-- Hidden SoundCloud Player -->
     <div class="hidden-player">
-        <iframe id="scPlayer" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay"
-            src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/1521282808&color=%23ff5500&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false">
+        <iframe id="scPlayer" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay; encrypted-media"
+            src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/playlists/1521282808&color=%238B5CF6&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false">
         </iframe>
     </div>
 
-    <!-- Silent audio for Media Session API (triggers lock screen controls) -->
+    <!-- Silent audio for Media Session API -->
     <audio id="silentAudio" loop preload="auto">
-        <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA"
-            type="audio/wav">
+        <source src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" type="audio/wav">
     </audio>
 
     <script src="https://w.soundcloud.com/player/api.js"></script>
     <script>
-        // Hardcoded track names (SoundCloud API doesn't provide all metadata upfront)
+        // ========== TRACK NAMES ==========
         const TRACK_NAMES = [
             "Dancin (extended/looped)(Aaron Smith - Dancin remix)",
             "Save Your Tears (southstar remix)",
-            "A New Kind Of 💕 (southstar remix)",
+            "A New Kind Of \u{1F495} (southstar remix)",
             "Silence",
             "Migos - Walk It Talk It (DURDENHAUER Edit) [FREE DOWNLOAD]",
             "Viva La Vida (Lynnic Rave Remix)",
             "Manu Chao - Me Gustas Tu (JKRS Techno Remix)",
             "i could be the one (marela edit)",
             "Peggy Gou x CamelPhat & Elderbrook - NANANA x COLA (Ian Asher Edit) [MONTNER Flip]",
-            "Kate Ryan - Désenchantée (Trym Summer'20 Re-Work)",
+            "Kate Ryan - D\u00E9senchant\u00E9e (Trym Summer'20 Re-Work)",
             "Matrakk - You're No Good",
             "Whats A Girl To Do (KRIEGZ REMIX)",
             "Misschien (kwijt) - Trance Remix (FREE DL)",
@@ -837,7 +1119,7 @@
             "John Newman - Love Me Again (Centre Court Remix)",
             "Baby Girl",
             "feel the friction [og]",
-            "LAU – Higher Love [TNTX016]",
+            "LAU \u2013 Higher Love [TNTX016]",
             "Speed Drive (Baron Von Trax Edit)",
             "Telephone (Oliver J Edit)",
             "Years and Years - Desire (EDIT)",
@@ -857,7 +1139,7 @@
             "Waiting For Tonight",
             "Sexy Bitch [Free DL]",
             "Caesars - Jerk It Out (Mosmoz Happy Edit)",
-            "💫MIKA - Relax [VALL DU SON MILKYWAY MIX]💫",
+            "\u{1F4AB}MIKA - Relax [VALL DU SON MILKYWAY MIX]\u{1F4AB}",
             "C'est Beau La Bourgeoisie (Edit)",
             "What Is Love (Funk Tribu Edit 2k23)",
             "Ascendant Vierge - Odymel Remix [BOOTLEG]",
@@ -875,16 +1157,16 @@
             "Premiere: Nero - Promises (Millie Forsberg Trance Edit) [DTECTVA03]",
             "Liquid Crystal - You're No Good (Kara Okay Edit)",
             "Lana Del Rey - Summertime Sadness (Dylan Brown Edit)",
-            "Premiere: Tory Lanez – Hurts Me (Antonym Trance Edit) [TNT007]",
-            "Coração",
-            "Ambra - liebst du mich noch so wie ich dich ? (KARVA Träumermix)",
+            "Premiere: Tory Lanez \u2013 Hurts Me (Antonym Trance Edit) [TNT007]",
+            "Cora\u00E7\u00E3o",
+            "Ambra - liebst du mich noch so wie ich dich ? (KARVA Tr\u00E4umermix)",
             "TOBIAS - Herzregen (DJ Festnetz Edit) [FREE DOWNLOAD]",
             "Here To Stay (Don't Lose The Feeling)",
             "W A T S K E B U R T supported by Bad Boombox",
             "Premiere: Uptones - Energy [Free Download]",
             "BANDOLERO",
             "Camargue (Lewis Taylor Edit)",
-            "Cher - Believe (Scharfes ß Edit)",
+            "Cher - Believe (Scharfes \u00DF Edit)",
             "Baila Bolero (Bad Boombox Club Edit) [badass bootlegs vol.6]",
             "Long Season Intro Edit",
             "Get Out My Head",
@@ -922,7 +1204,7 @@
             "Marco B",
             "SAXOBEAT BOOTLEG",
             "Don't Stop The Music",
-            "Clubheroes – Da Lost Piano (Sean Drinan Edit) [TNTX025]",
+            "Clubheroes \u2013 Da Lost Piano (Sean Drinan Edit) [TNTX025]",
             "EVACUATE THE DANCEFLOOR - TRANCE REMIX",
             "SUPERSTAR",
             "I Was Made For Lovin' You (edit)",
@@ -983,7 +1265,7 @@
             "Desire - Puk",
             "Children - KELLAR",
             "Jef Nice - Your Caress",
-            "Désenchantée - Nova Blue",
+            "D\u00E9senchant\u00E9e - Nova Blue",
             "Benleh - Animals",
             "I like it - Centre Court",
             "Hapiness - Dillon Hett",
@@ -995,34 +1277,37 @@
             "Marco B - Dromen zijn bedrog - VAN OLDEN"
         ];
 
-        // State
+        // ========== STATE ==========
         const widget = SC.Widget('scPlayer');
         const silentAudio = document.getElementById('silentAudio');
         let tracks = [];
-        let trackCount = TRACK_NAMES.length; // Use hardcoded count
+        let trackCount = TRACK_NAMES.length;
         let currentIndex = -1;
         let isPlaying = false;
         let isShuffled = false;
         let duration = 0;
         let queue = [];
-        let trackCache = {}; // Cache for track metadata
+        let trackCache = {};
+        let fsOpen = false;
+        let trackListInitialized = false;
+        let swipeOccurred = false;
+        let queueCollapsed = true;
 
-        // DOM Elements
+        // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
-        const nowPlayingCard = document.getElementById('nowPlayingCard');
-        const currentTrackName = document.getElementById('currentTrackName');
-        const progressBar = document.getElementById('progressBar');
+        const nowPlayingBar = document.getElementById('nowPlayingBar');
+        const currentTrackNameEl = document.getElementById('currentTrackName');
+        const barProgressContainer = document.getElementById('barProgressContainer');
         const progressFill = document.getElementById('progressFill');
-        const timeNow = document.getElementById('timeNow');
-        const timeTotal = document.getElementById('timeTotal');
         const playBtn = document.getElementById('playBtn');
         const playIcon = document.getElementById('playIcon');
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
-        const shuffleBtn = document.getElementById('shuffleBtn');
+        const expandBtn = document.getElementById('expandBtn');
+        const queueSection = document.getElementById('queueSection');
+        const queueHeader = document.getElementById('queueHeader');
         const queueList = document.getElementById('queueList');
         const queueBadge = document.getElementById('queueBadge');
-        const clearQueueBtn = document.getElementById('clearQueue');
         const miniPlayer = document.getElementById('miniPlayer');
         const miniPlayBtn = document.getElementById('miniPlayBtn');
         const miniPlayIcon = document.getElementById('miniPlayIcon');
@@ -1030,60 +1315,81 @@
         const miniProgressFill = document.getElementById('miniProgressFill');
         const miniExpand = document.getElementById('miniExpand');
         const miniInfo = document.getElementById('miniInfo');
+        const fullscreenPlayer = document.getElementById('fullscreenPlayer');
+        const fsCloseBtn = document.getElementById('fsCloseBtn');
+        const fsTrackName = document.getElementById('fsTrackName');
+        const fsProgressBar = document.getElementById('fsProgressBar');
+        const fsProgressFill = document.getElementById('fsProgressFill');
+        const fsTimeNow = document.getElementById('fsTimeNow');
+        const fsTimeTotal = document.getElementById('fsTimeTotal');
+        const fsPlayBtn = document.getElementById('fsPlayBtn');
+        const fsPlayIcon = document.getElementById('fsPlayIcon');
+        const fsPrevBtn = document.getElementById('fsPrevBtn');
+        const fsNextBtn = document.getElementById('fsNextBtn');
+        const fsShuffleBtn = document.getElementById('fsShuffleBtn');
+        const swipeToast = document.getElementById('swipeToast');
 
-        // Format time
-        function formatTime(ms) {
-            if (!ms || isNaN(ms) || ms <= 0) return '--:--';
-            const totalSeconds = Math.floor(ms / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        // ========== HELPERS ==========
+        function escapeHTML(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
         }
 
-        // Get track title - use hardcoded names first
+        function formatTime(ms) {
+            if (ms === null || ms === undefined || isNaN(ms) || ms < 0) return '--:--';
+            const s = Math.floor(ms / 1000);
+            return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+        }
+
         function getTrackTitle(index) {
-            // Use hardcoded names first
-            if (TRACK_NAMES[index]) {
-                return TRACK_NAMES[index];
-            }
-            // Fallback to cache or API data
-            if (trackCache[index]?.title) {
-                return trackCache[index].title;
-            }
-            if (tracks[index]?.title) {
-                return tracks[index].title;
-            }
+            if (TRACK_NAMES[index]) return TRACK_NAMES[index];
+            if (trackCache[index]?.title) return trackCache[index].title;
+            if (tracks[index]?.title) return tracks[index].title;
             return `Track ${index + 1}`;
         }
 
-        // Get track duration - use cache if available
         function getTrackDuration(index) {
-            if (trackCache[index]?.duration) {
-                return trackCache[index].duration;
-            }
-            if (tracks[index]?.duration) {
-                return tracks[index].duration;
-            }
+            if (trackCache[index]?.duration) return trackCache[index].duration;
+            if (tracks[index]?.duration) return tracks[index].duration;
             return 0;
         }
 
-        // Render track list
-        function renderTracks() {
-            const count = trackCount || tracks.length;
-            if (count === 0) {
-                trackListEl.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading tracks...</span></div>';
-                return;
-            }
+        // ========== SYNC HELPERS ==========
+        function syncAllProgressBars(percent) {
+            progressFill.style.transform = 'scaleX(' + (percent / 100) + ')';
+            miniProgressFill.style.transform = 'scaleX(' + (percent / 100) + ')';
+            if (fsOpen) fsProgressFill.style.width = percent + '%';
+        }
 
-            let html = '';
-            for (let i = 0; i < count; i++) {
-                const title = getTrackTitle(i);
-                const dur = getTrackDuration(i);
-                const isCurrentPlaying = i === currentIndex;
-                const isInQueue = queue.includes(i);
+        function syncAllPlayIcons(playing) {
+            const html = playing
+                ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'
+                : '<path d="M8 5v14l11-7z"/>';
+            playIcon.innerHTML = html;
+            miniPlayIcon.innerHTML = html;
+            fsPlayIcon.innerHTML = html;
+        }
 
-                html += `
-                <div class="track-item ${isCurrentPlaying ? 'playing' : ''} ${isInQueue ? 'in-queue' : ''}" data-index="${i}">
+        // ========== TOAST ==========
+        let toastTimeout;
+        function showToast(msg) {
+            swipeToast.textContent = msg;
+            swipeToast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => swipeToast.classList.remove('show'), 1500);
+        }
+
+        // ========== TRACK LIST (targeted DOM updates) ==========
+        function buildTrackItemHTML(i) {
+            const title = escapeHTML(getTrackTitle(i));
+            const dur = getTrackDuration(i);
+            const isCurrent = i === currentIndex;
+            const isInQueue = queue.includes(i);
+            return `<div class="track-item-wrapper" data-index="${i}">
+                <div class="track-item-action queue-action"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Queue</div>
+                <div class="track-item-action remove-action"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Remove</div>
+                <div class="track-item ${isCurrent ? 'playing' : ''} ${isInQueue ? 'in-queue' : ''}" data-index="${i}">
                     <div class="track-number">
                         <span>${i + 1}</span>
                         <div class="playing-icon">
@@ -1094,91 +1400,303 @@
                     </div>
                     <div class="track-info">
                         <div class="track-title">${title}</div>
-                        <div class="track-duration">${formatTime(dur)}</div>
+                        <div class="track-duration">${dur > 0 ? formatTime(dur) : ''}</div>
                     </div>
                     <button class="add-to-queue ${isInQueue ? 'added' : ''}" data-index="${i}" aria-label="Add to queue">
                         <svg viewBox="0 0 24 24">${isInQueue ? '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>' : '<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>'}</svg>
                     </button>
-                </div>`;
-            }
-            trackListEl.innerHTML = html;
-
-            // Track click - play
-            document.querySelectorAll('.track-item').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    if (e.target.closest('.add-to-queue')) return;
-                    const index = parseInt(item.dataset.index);
-                    playTrack(index);
-                });
-            });
-
-            // Add to queue button
-            document.querySelectorAll('.add-to-queue').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const index = parseInt(btn.dataset.index);
-                    toggleQueue(index);
-                });
-            });
+                </div>
+            </div>`;
         }
 
-        // Render queue
+        function renderTracks() {
+            const count = trackCount || tracks.length;
+            if (count === 0) {
+                trackListEl.innerHTML = '<div class="loading"><div class="spinner"></div><span>Loading tracks...</span></div>';
+                trackListInitialized = false;
+                return;
+            }
+            if (!trackListInitialized) {
+                let html = '';
+                for (let i = 0; i < count; i++) html += buildTrackItemHTML(i);
+                trackListEl.innerHTML = html;
+                trackListInitialized = true;
+                return;
+            }
+            const wrappers = trackListEl.children;
+            for (let i = 0; i < wrappers.length; i++) {
+                const wrapper = wrappers[i];
+                const item = wrapper.querySelector('.track-item');
+                if (!item) continue;
+                const idx = parseInt(item.dataset.index);
+                const isCurrent = idx === currentIndex;
+                const isInQueue = queue.includes(idx);
+                item.classList.toggle('playing', isCurrent);
+                item.classList.toggle('in-queue', isInQueue);
+                const btn = item.querySelector('.add-to-queue');
+                if (btn) {
+                    btn.classList.toggle('added', isInQueue);
+                    btn.querySelector('svg').innerHTML = isInQueue
+                        ? '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>'
+                        : '<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>';
+                }
+                const titleEl = item.querySelector('.track-title');
+                if (titleEl) titleEl.textContent = getTrackTitle(idx);
+                const durEl = item.querySelector('.track-duration');
+                const dur = getTrackDuration(idx);
+                if (durEl) durEl.textContent = dur > 0 ? formatTime(dur) : '';
+            }
+        }
+
+        // ========== EVENT DELEGATION ==========
+        trackListEl.addEventListener('click', (e) => {
+            if (swipeOccurred) { swipeOccurred = false; return; }
+            const queueBtn = e.target.closest('.add-to-queue');
+            if (queueBtn) {
+                e.stopPropagation();
+                toggleQueue(parseInt(queueBtn.dataset.index));
+                return;
+            }
+            const item = e.target.closest('.track-item');
+            if (item) playTrack(parseInt(item.dataset.index));
+        });
+
+        // ========== SWIPE GESTURES ==========
+        let swipeStartX = 0, swipeStartY = 0, swipeWrapper = null, swipeItem = null, swipeDirection = null;
+        const SWIPE_THRESHOLD = 60;
+
+        trackListEl.addEventListener('touchstart', (e) => {
+            swipeOccurred = false;
+            swipeWrapper = e.target.closest('.track-item-wrapper');
+            if (!swipeWrapper) return;
+            swipeItem = swipeWrapper.querySelector('.track-item');
+            swipeStartX = e.touches[0].clientX;
+            swipeStartY = e.touches[0].clientY;
+            swipeDirection = null;
+        }, { passive: true });
+
+        trackListEl.addEventListener('touchmove', (e) => {
+            if (!swipeItem) return;
+            const dx = e.touches[0].clientX - swipeStartX;
+            const dy = e.touches[0].clientY - swipeStartY;
+
+            // Decide direction once
+            if (!swipeDirection) {
+                if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; // dead zone
+                swipeDirection = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+            }
+
+            // Vertical = let browser handle scroll, bail out
+            if (swipeDirection === 'v') { swipeItem = null; swipeWrapper = null; return; }
+
+            // Horizontal swipe
+            swipeWrapper.classList.add('swiping');
+            const clamped = Math.max(-80, Math.min(80, dx));
+            swipeItem.style.transform = `translateX(${clamped}px)`;
+            swipeItem.style.transition = 'none';
+        }, { passive: true });
+
+        trackListEl.addEventListener('touchend', (e) => {
+            if (!swipeItem || swipeDirection !== 'h') {
+                swipeItem = null; swipeWrapper = null; swipeDirection = null;
+                return;
+            }
+            const dx = e.changedTouches[0].clientX - swipeStartX;
+            const idx = parseInt(swipeItem.dataset.index);
+
+            swipeItem.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            swipeItem.style.transform = '';
+            if (swipeWrapper) swipeWrapper.classList.remove('swiping');
+
+            if (Math.abs(dx) > 10) {
+                swipeOccurred = true;
+                setTimeout(() => { swipeOccurred = false; }, 300);
+            }
+
+            if (Math.abs(dx) >= SWIPE_THRESHOLD && 'vibrate' in navigator) navigator.vibrate(10);
+
+            if (dx > SWIPE_THRESHOLD) {
+                if (!queue.includes(idx)) {
+                    queue.push(idx);
+                    if (isShuffled) shuffleArray(queue);
+                    renderQueue(); renderTracks();
+                    showToast('Added to queue');
+                } else {
+                    showToast('Already in queue');
+                }
+            } else if (dx < -SWIPE_THRESHOLD) {
+                const pos = queue.indexOf(idx);
+                if (pos > -1) {
+                    queue.splice(pos, 1);
+                    renderQueue(); renderTracks();
+                    showToast('Removed from queue');
+                } else {
+                    showToast('Not in queue');
+                }
+            }
+            swipeItem = null; swipeWrapper = null; swipeDirection = null;
+        }, { passive: true });
+
+        // ========== QUEUE ==========
         function renderQueue() {
             queueBadge.textContent = queue.length;
 
+            // Hide entire section when empty
             if (queue.length === 0) {
+                queueSection.classList.add('hidden');
                 queueList.innerHTML = '';
                 return;
             }
 
+            // Show and auto-expand when items are added
+            queueSection.classList.remove('hidden');
+            queueSection.classList.remove('collapsed');
+            queueCollapsed = false;
+
             queueList.innerHTML = queue.map((trackIndex, i) => `
                 <div class="queue-item" data-index="${trackIndex}" data-queue-pos="${i}">
-                    <span class="queue-item-num">${i + 1}</span>
-                    <span class="queue-item-title">${getTrackTitle(trackIndex)}</span>
+                    <div class="queue-drag-handle" data-queue-pos="${i}">
+                        <svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                    </div>
+                    <div class="queue-item-info">
+                        <span class="queue-item-num">${i + 1}</span>
+                        <span class="queue-item-title">${escapeHTML(getTrackTitle(trackIndex))}</span>
+                    </div>
                     <button class="queue-remove" data-queue-pos="${i}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                     </button>
-                </div>
-            `).join('');
-
-            // Remove from queue
-            document.querySelectorAll('.queue-remove').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const pos = parseInt(btn.dataset.queuePos);
-                    queue.splice(pos, 1);
-                    renderQueue();
-                    renderTracks();
-                });
-            });
-
-            // Play from queue
-            document.querySelectorAll('.queue-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const trackIndex = parseInt(item.dataset.index);
-                    const queuePos = parseInt(item.dataset.queuePos);
-                    queue.splice(queuePos, 1);
-                    playTrack(trackIndex);
-                });
-            });
+                </div>`).join('');
         }
 
-        // Toggle queue
-        function toggleQueue(index) {
-            const pos = queue.indexOf(index);
-            if (pos > -1) {
-                queue.splice(pos, 1);
-            } else {
-                queue.push(index);
-                if (isShuffled) {
-                    shuffleArray(queue);
+        // Queue event delegation (tap to play, X to remove)
+        queueList.addEventListener('click', (e) => {
+            if (e.target.closest('.queue-drag-handle')) return; // ignore drag handle taps
+            const removeBtn = e.target.closest('.queue-remove');
+            if (removeBtn) {
+                e.stopPropagation();
+                queue.splice(parseInt(removeBtn.dataset.queuePos), 1);
+                renderQueue(); renderTracks();
+                return;
+            }
+            const item = e.target.closest('.queue-item');
+            if (item) {
+                queue.splice(parseInt(item.dataset.queuePos), 1);
+                playTrack(parseInt(item.dataset.index));
+            }
+        });
+
+        // ========== QUEUE DRAG-TO-REORDER ==========
+        let dragItem = null, dragStartY = 0, dragIndex = -1, dragActive = false;
+        let dragItemRects = []; // cached rects at drag start
+        const ITEM_H = 48; // approximate item height
+
+        function dragCleanup() {
+            if (!dragItem) return;
+            const items = Array.from(queueList.querySelectorAll('.queue-item'));
+            items.forEach(el => {
+                el.classList.remove('dragging', 'drag-shift-down', 'drag-shift-up');
+                el.style.transform = '';
+            });
+            queueList.style.userSelect = '';
+            dragItem = null;
+            dragIndex = -1;
+            dragActive = false;
+        }
+
+        queueList.addEventListener('touchstart', (e) => {
+            const handle = e.target.closest('.queue-drag-handle');
+            if (!handle) return;
+            const item = handle.closest('.queue-item');
+            if (!item) return;
+
+            dragIndex = parseInt(item.dataset.queuePos);
+            dragItem = item;
+            dragStartY = e.touches[0].clientY;
+            dragActive = false;
+
+            // Cache all item positions at start
+            dragItemRects = Array.from(queueList.querySelectorAll('.queue-item')).map(el => {
+                const r = el.getBoundingClientRect();
+                return { el, top: r.top, mid: r.top + r.height / 2, pos: parseInt(el.dataset.queuePos) };
+            });
+        }, { passive: true });
+
+        queueList.addEventListener('touchmove', (e) => {
+            if (!dragItem) return;
+            const y = e.touches[0].clientY;
+            const dy = y - dragStartY;
+
+            if (!dragActive) {
+                if (Math.abs(dy) < 6) return;
+                dragActive = true;
+                dragItem.classList.add('dragging');
+                if ('vibrate' in navigator) navigator.vibrate(12);
+                queueList.style.userSelect = 'none';
+            }
+
+            // Move dragged item with finger
+            dragItem.style.transform = `translateY(${dy}px) scale(1.02)`;
+
+            // Shift other items out of the way
+            dragItemRects.forEach(r => {
+                if (r.pos === dragIndex) return;
+                r.el.classList.remove('drag-shift-down', 'drag-shift-up');
+                // If dragging down past an item, shift it up
+                if (dy > 0 && r.pos > dragIndex && y > r.mid) {
+                    r.el.classList.add('drag-shift-up');
+                }
+                // If dragging up past an item, shift it down
+                if (dy < 0 && r.pos < dragIndex && y < r.mid) {
+                    r.el.classList.add('drag-shift-down');
+                }
+            });
+        }, { passive: true });
+
+        queueList.addEventListener('touchend', () => {
+            if (!dragItem || !dragActive) { dragCleanup(); return; }
+
+            // Calculate target position from shifted items
+            let targetIndex = dragIndex;
+            const shifted = dragItemRects.filter(r =>
+                r.el.classList.contains('drag-shift-up') || r.el.classList.contains('drag-shift-down')
+            );
+
+            if (shifted.length > 0) {
+                if (shifted[0].el.classList.contains('drag-shift-up')) {
+                    // Dragged down: target = highest shifted-up item's position
+                    targetIndex = Math.max(...shifted.map(r => r.pos));
+                } else {
+                    // Dragged up: target = lowest shifted-down item's position
+                    targetIndex = Math.min(...shifted.map(r => r.pos));
                 }
             }
+
+            // Reorder queue array
+            if (targetIndex !== dragIndex && targetIndex >= 0 && targetIndex < queue.length) {
+                const [moved] = queue.splice(dragIndex, 1);
+                queue.splice(targetIndex, 0, moved);
+                if ('vibrate' in navigator) navigator.vibrate(8);
+            }
+
+            dragCleanup();
             renderQueue();
-            renderTracks();
+        }, { passive: true });
+
+        queueList.addEventListener('touchcancel', () => { dragCleanup(); });
+
+        function toggleQueue(index) {
+            const pos = queue.indexOf(index);
+            if (pos > -1) { queue.splice(pos, 1); showToast('Removed from queue'); }
+            else { queue.push(index); if (isShuffled) shuffleArray(queue); showToast('Added to queue'); }
+            renderQueue(); renderTracks();
         }
 
-        // Shuffle array in place
+        queueHeader.addEventListener('click', () => {
+            queueCollapsed = !queueCollapsed;
+            queueSection.classList.toggle('collapsed', queueCollapsed);
+        });
+
+        // ========== SHUFFLE ==========
         function shuffleArray(arr) {
             for (let i = arr.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -1188,51 +1706,41 @@
 
         function getRandomTrackIndex() {
             if (trackCount <= 1) return currentIndex;
-            let randomIndex;
-            do {
-                randomIndex = Math.floor(Math.random() * trackCount);
-            } while (randomIndex === currentIndex);
-            return randomIndex;
+            let r;
+            do { r = Math.floor(Math.random() * trackCount); } while (r === currentIndex);
+            return r;
         }
 
-        // Play track
+        // ========== PLAYBACK ==========
         function playTrack(index) {
-            widget.skip(index);
-            widget.play();
+            if (index === currentIndex) { widget.toggle(); return; }
+            widget.skip(index); widget.play();
         }
 
-        // Update play/pause icons
-        function updatePlayIcons() {
-            const playPath = '<path d="M8 5v14l11-7z"/>';
-            const pausePath = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
-            playIcon.innerHTML = isPlaying ? pausePath : playPath;
-            miniPlayIcon.innerHTML = isPlaying ? pausePath : playPath;
+        function updatePlayingState(playing) {
+            isPlaying = playing;
+            nowPlayingBar.classList.toggle('playing', playing);
+            syncAllPlayIcons(playing);
+            if (silentAudio) {
+                if (playing) silentAudio.play().catch(() => {});
+                else silentAudio.pause();
+            }
         }
 
-        // Fetch and cache current track info
         function fetchCurrentTrackInfo() {
-            widget.getCurrentSound(function (sound) {
+            widget.getCurrentSound(function(sound) {
                 if (sound && currentIndex >= 0) {
-                    trackCache[currentIndex] = {
-                        title: sound.title || `Track ${currentIndex + 1}`,
-                        duration: sound.duration || 0
-                    };
-
-                    // Update displays
+                    trackCache[currentIndex] = { title: sound.title || `Track ${currentIndex + 1}`, duration: sound.duration || 0 };
                     const title = sound.title || `Track ${currentIndex + 1}`;
-                    currentTrackName.textContent = title;
+                    currentTrackNameEl.textContent = title;
                     miniTrackName.textContent = title;
-
-                    renderTracks();
-                    renderQueue();
+                    if (fsOpen) fsTrackName.textContent = title;
+                    renderTracks(); renderQueue();
                 }
             });
-
-            // Get actual loaded duration for seeking
-            widget.getDuration(function (d) {
+            widget.getDuration(function(d) {
                 if (d && d > 0) {
                     duration = d;
-                    timeTotal.textContent = formatTime(d);
                     if (currentIndex >= 0) {
                         trackCache[currentIndex] = trackCache[currentIndex] || {};
                         trackCache[currentIndex].duration = d;
@@ -1241,363 +1749,290 @@
             });
         }
 
-        // Update current track display
         function updateCurrentTrack(index) {
             currentIndex = index;
-
-            // Set initial display from cache or placeholder
             const title = getTrackTitle(index);
-            currentTrackName.textContent = title;
+            currentTrackNameEl.textContent = title;
             miniTrackName.textContent = title;
             duration = getTrackDuration(index);
-            timeTotal.textContent = formatTime(duration);
-
-            // Fetch fresh data from widget
+            if (fsOpen) syncFullscreenState();
             fetchCurrentTrackInfo();
-
             renderTracks();
-        }
-
-        // Update playing state
-        function updatePlayingState(playing) {
-            isPlaying = playing;
-            nowPlayingCard.classList.toggle('playing', playing);
-            updatePlayIcons();
-
-            // Sync silent audio for Media Session API (triggers lock screen controls)
-            if (silentAudio) {
-                if (playing) {
-                    silentAudio.play().catch(() => { });
-                } else {
-                    silentAudio.pause();
+            // Scroll active track into view if off-screen
+            const activeWrapper = trackListEl.querySelector(`.track-item-wrapper[data-index="${index}"]`);
+            if (activeWrapper) {
+                const rect = activeWrapper.getBoundingClientRect();
+                const viewH = window.innerHeight;
+                if (rect.top < 0 || rect.bottom > viewH - 80) {
+                    activeWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
         }
 
-        // Mini player visibility
-        function checkMiniPlayer() {
-            const card = nowPlayingCard.getBoundingClientRect();
-            const shouldShow = card.bottom < 0 && currentIndex >= 0;
-            miniPlayer.classList.toggle('visible', shouldShow);
+        // ========== FULLSCREEN PLAYER ==========
+        function syncFullscreenState() {
+            fsTrackName.textContent = getTrackTitle(currentIndex);
+            syncAllPlayIcons(isPlaying);
+            fsShuffleBtn.classList.toggle('shuffle-active', isShuffled);
+            fsTimeTotal.textContent = formatTime(duration);
+            widget.getPosition(function(pos) {
+                if (duration > 0) {
+                    fsProgressFill.style.width = ((pos / duration) * 100) + '%';
+                    fsTimeNow.textContent = formatTime(pos);
+                }
+            });
         }
 
-        // Clear queue
-        clearQueueBtn.addEventListener('click', () => {
-            queue = [];
-            renderQueue();
-            renderTracks();
-        });
+        function openFullscreen() {
+            fsOpen = true;
+            fullscreenPlayer.classList.add('open');
+            document.body.classList.add('fs-open');
+            miniPlayer.classList.remove('visible');
+            if (!history.state?.fsOpen) {
+                history.pushState({ fsOpen: true }, '', '');
+            }
+            syncFullscreenState();
+        }
 
-        // Shuffle toggle
-        shuffleBtn.addEventListener('click', () => {
+        function closeFullscreen() {
+            if (!fsOpen) return;
+            fsOpen = false;
+            fullscreenPlayer.classList.remove('open');
+            fullscreenPlayer.style.transform = '';
+            document.body.classList.remove('fs-open');
+            if (history.state?.fsOpen) history.back();
+            checkMiniPlayer();
+        }
+
+        expandBtn.addEventListener('click', openFullscreen);
+        fsCloseBtn.addEventListener('click', closeFullscreen);
+
+        fsPlayBtn.addEventListener('click', () => widget.toggle());
+        fsPrevBtn.addEventListener('click', () => widget.prev());
+        fsNextBtn.addEventListener('click', () => {
+            if (queue.length > 0) { const n = queue.shift(); renderQueue(); renderTracks(); playTrack(n); }
+            else if (isShuffled) playTrack(getRandomTrackIndex());
+            else widget.next();
+        });
+        fsShuffleBtn.addEventListener('click', () => {
             isShuffled = !isShuffled;
-            shuffleBtn.classList.toggle('active', isShuffled);
-            if (isShuffled && queue.length > 0) {
-                shuffleArray(queue);
-                renderQueue();
-            }
+            fsShuffleBtn.classList.toggle('shuffle-active', isShuffled);
+            if (isShuffled && queue.length > 0) { shuffleArray(queue); renderQueue(); }
         });
 
-        // Initialize widget
-        widget.bind(SC.Widget.Events.READY, function () {
-            // Get initial sounds - may be incomplete for private playlists
-            widget.getSounds(function (sounds) {
+        // Fullscreen swipe-down to close
+        let fsTouchStartY = 0, fsDragging = false;
+        fullscreenPlayer.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.fs-progress-bar')) return;
+            fsTouchStartY = e.touches[0].clientY;
+            fsDragging = false;
+        }, { passive: true });
+
+        fullscreenPlayer.addEventListener('touchmove', (e) => {
+            if (e.target.closest('.fs-progress-bar')) return;
+            const deltaY = e.touches[0].clientY - fsTouchStartY;
+            if (deltaY > 20) {
+                fsDragging = true;
+                e.preventDefault();
+                fullscreenPlayer.style.transition = 'none';
+                fullscreenPlayer.style.transform = `translateY(${deltaY}px)`;
+            }
+        }, { passive: false });
+
+        fullscreenPlayer.addEventListener('touchend', (e) => {
+            if (!fsDragging) return;
+            const deltaY = e.changedTouches[0].clientY - fsTouchStartY;
+            fullscreenPlayer.style.transition = '';
+            if (deltaY > 120) closeFullscreen();
+            else fullscreenPlayer.style.transform = '';
+            fsDragging = false;
+        }, { passive: true });
+
+        window.addEventListener('popstate', () => { if (fsOpen) closeFullscreen(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && fsOpen) closeFullscreen(); });
+
+        // Swipe-up to open fullscreen
+        function addSwipeUpToOpen(el) {
+            let startY = 0;
+            el.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+            el.addEventListener('touchend', (e) => {
+                if (e.changedTouches[0].clientY - startY < -50 && !fsOpen) openFullscreen();
+            }, { passive: true });
+        }
+        addSwipeUpToOpen(nowPlayingBar);
+        addSwipeUpToOpen(miniPlayer);
+
+        // ========== SEEK HANDLER FACTORY ==========
+        function createSeekHandler(barEl, fillEl, useWidth) {
+            let seeking = false, lastPercent = 0;
+            function getPercent(e) {
+                const rect = barEl.getBoundingClientRect();
+                const t = (e.touches && e.touches.length > 0) ? e.touches[0]
+                        : (e.changedTouches && e.changedTouches.length > 0) ? e.changedTouches[0]
+                        : e;
+                return Math.max(0, Math.min(1, (t.clientX - rect.left) / rect.width));
+            }
+            function updateFill(p) {
+                if (useWidth) fillEl.style.width = (p * 100) + '%';
+                else fillEl.style.transform = 'scaleX(' + p + ')';
+                syncAllProgressBars(p * 100);
+            }
+            function onTouchMove(e) { lastPercent = getPercent(e); updateFill(lastPercent); }
+            function onMouseMove(e) { lastPercent = getPercent(e); updateFill(lastPercent); }
+            function endSeek() {
+                seeking = false; document.body.classList.remove('seeking');
+                if (barEl === fsProgressBar) fullscreenPlayer.classList.remove('seeking');
+                if (duration > 0) widget.seekTo(lastPercent * duration);
+                if (barEl === fsProgressBar) fsTimeNow.textContent = formatTime(lastPercent * duration);
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('touchend', endSeek);
+                document.removeEventListener('mouseup', endSeek);
+                document.removeEventListener('touchcancel', cancelSeek);
+            }
+            function cancelSeek() {
+                seeking = false; document.body.classList.remove('seeking');
+                if (barEl === fsProgressBar) fullscreenPlayer.classList.remove('seeking');
+                document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('touchend', endSeek);
+                document.removeEventListener('touchcancel', cancelSeek);
+            }
+            barEl.addEventListener('touchstart', (e) => {
+                seeking = true; document.body.classList.add('seeking');
+                if (barEl === fsProgressBar) fullscreenPlayer.classList.add('seeking');
+                lastPercent = getPercent(e); updateFill(lastPercent);
+                document.addEventListener('touchmove', onTouchMove, { passive: true });
+                document.addEventListener('touchend', endSeek);
+                document.addEventListener('touchcancel', cancelSeek);
+            }, { passive: true });
+            barEl.addEventListener('mousedown', (e) => {
+                seeking = true; document.body.classList.add('seeking');
+                if (barEl === fsProgressBar) fullscreenPlayer.classList.add('seeking');
+                lastPercent = getPercent(e); updateFill(lastPercent);
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', endSeek);
+            });
+        }
+
+        createSeekHandler(barProgressContainer, progressFill, false);
+        createSeekHandler(fsProgressBar, fsProgressFill, true);
+
+        // ========== MINI PLAYER ==========
+        const miniObserver = new IntersectionObserver((entries) => {
+            const shouldShow = !entries[0].isIntersecting && currentIndex >= 0 && !fsOpen;
+            miniPlayer.classList.toggle('visible', shouldShow);
+        }, { threshold: 0 });
+        miniObserver.observe(nowPlayingBar);
+
+        function checkMiniPlayer() {
+            if (fsOpen) { miniPlayer.classList.remove('visible'); return; }
+            const rect = nowPlayingBar.getBoundingClientRect();
+            miniPlayer.classList.toggle('visible', rect.bottom < 0 && currentIndex >= 0);
+        }
+
+        miniPlayBtn.addEventListener('click', () => widget.toggle());
+        miniExpand.addEventListener('click', openFullscreen);
+        miniInfo.addEventListener('click', openFullscreen);
+
+        // ========== COMPACT BAR CONTROLS ==========
+        playBtn.addEventListener('click', () => widget.toggle());
+        prevBtn.addEventListener('click', () => widget.prev());
+        nextBtn.addEventListener('click', () => {
+            if (queue.length > 0) { const n = queue.shift(); renderQueue(); renderTracks(); playTrack(n); }
+            else if (isShuffled) playTrack(getRandomTrackIndex());
+            else widget.next();
+        });
+
+        // ========== WIDGET EVENTS ==========
+        widget.bind(SC.Widget.Events.READY, function() {
+            widget.getSounds(function(sounds) {
                 tracks = sounds;
-                if (sounds.length > 0) {
-                    trackCount = sounds.length;
-                }
+                if (sounds.length > 0) trackCount = sounds.length;
                 renderTracks();
             });
-
-            widget.bind(SC.Widget.Events.PLAY, function () {
-                updatePlayingState(true);
-                // Fetch track info when play starts
-                fetchCurrentTrackInfo();
-            });
-
-            widget.bind(SC.Widget.Events.PAUSE, function () {
-                updatePlayingState(false);
-            });
-
-            widget.bind(SC.Widget.Events.PLAY_PROGRESS, function (e) {
-                // Use the duration from getDuration, not from track metadata
+            widget.bind(SC.Widget.Events.PLAY, function() { updatePlayingState(true); fetchCurrentTrackInfo(); });
+            widget.bind(SC.Widget.Events.PAUSE, function() { updatePlayingState(false); });
+            widget.bind(SC.Widget.Events.PLAY_PROGRESS, function(e) {
                 if (duration > 0) {
                     const percent = (e.currentPosition / duration) * 100;
-                    progressFill.style.width = percent + '%';
-                    miniProgressFill.style.width = percent + '%';
-                    timeNow.textContent = formatTime(e.currentPosition);
+                    syncAllProgressBars(percent);
+                    if (fsOpen) { fsTimeNow.textContent = formatTime(e.currentPosition); fsTimeTotal.textContent = formatTime(duration); }
                 }
             });
-
-            widget.bind(SC.Widget.Events.FINISH, function () {
-                // Play next from queue or continue playlist
-                if (queue.length > 0) {
-                    const nextTrack = queue.shift();
-                    renderQueue();
-                    renderTracks();
-                    playTrack(nextTrack);
-                } else if (isShuffled) {
-                    // Shuffle mode: pick random track (avoid current)
-                    const randomIndex = getRandomTrackIndex();
-                    if (randomIndex !== currentIndex) {
-                        playTrack(randomIndex);
-                    }
-                } else if (currentIndex < trackCount - 1) {
-                    widget.next();
-                }
+            widget.bind(SC.Widget.Events.FINISH, function() {
+                if (queue.length > 0) { const n = queue.shift(); renderQueue(); renderTracks(); playTrack(n); }
+                else if (isShuffled) playTrack(getRandomTrackIndex());
+                else if (currentIndex < trackCount - 1) widget.next();
             });
-
-            widget.getCurrentSoundIndex(function (index) {
-                if (index >= 0) updateCurrentTrack(index);
-            });
-
-            // Poll for track changes
+            widget.getCurrentSoundIndex(function(index) { if (index >= 0) updateCurrentTrack(index); });
             setInterval(() => {
-                widget.getCurrentSoundIndex(function (index) {
-                    if (index !== currentIndex && index >= 0) {
-                        updateCurrentTrack(index);
-                    }
-                });
+                widget.getCurrentSoundIndex(function(index) { if (index !== currentIndex && index >= 0) updateCurrentTrack(index); });
             }, 500);
         });
 
-        // Controls
-        playBtn.addEventListener('click', () => widget.toggle());
-        miniPlayBtn.addEventListener('click', () => widget.toggle());
-        prevBtn.addEventListener('click', () => widget.prev());
-        nextBtn.addEventListener('click', () => {
-            if (queue.length > 0) {
-                const nextTrack = queue.shift();
-                renderQueue();
-                renderTracks();
-                playTrack(nextTrack);
-            } else if (isShuffled) {
-                const randomIndex = getRandomTrackIndex();
-                if (randomIndex !== currentIndex) {
-                    playTrack(randomIndex);
-                }
-            } else {
-                widget.next();
+        // Loading error timeout
+        setTimeout(() => {
+            if (!trackListInitialized) {
+                trackListEl.innerHTML = '<div class="loading"><span style="color:var(--danger)">Could not load tracks. Check your connection and reload.</span></div>';
             }
-        });
+        }, 10000);
 
-        // Scroll to top
-        miniExpand.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-
-        miniInfo.addEventListener('click', () => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-
-        // Seek functionality
-        let isSeeking = false;
-        let lastSeekPercent = 0;
-
-        function startSeeking() {
-            isSeeking = true;
-            document.body.classList.add('seeking');
+        // First-time swipe hint
+        if (!localStorage.getItem('swipeHintShown')) {
+            setTimeout(() => {
+                showToast('Swipe tracks right to queue');
+                localStorage.getItem('swipeHintShown') || localStorage.setItem('swipeHintShown', '1');
+            }, 2500);
         }
 
-        function endSeeking() {
-            isSeeking = false;
-            document.body.classList.remove('seeking');
-        }
+        // ========== MEDIA SESSION API ==========
+        const DEFAULT_ARTWORK = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"><rect width="512" height="512" fill="#8B5CF6"/><path fill="white" d="M256 80c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176S353.2 80 256 80zm80 200h-64v80c0 26.5-21.5 48-48 48s-48-21.5-48-48 21.5-48 48-48c8.7 0 16.9 2.3 24 6.4V152h88v128z"/></svg>`);
 
-        function seek(e) {
-            const rect = progressBar.getBoundingClientRect();
-            const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-            const percent = Math.max(0, Math.min(1, x / rect.width));
-            progressFill.style.width = (percent * 100) + '%';
-            miniProgressFill.style.width = (percent * 100) + '%';
-            timeNow.textContent = formatTime(percent * duration);
-            lastSeekPercent = percent;
-            return percent;
-        }
-
-        function performSeek(percent) {
-            if (duration > 0) {
-                const seekMs = percent * duration;
-                widget.seekTo(seekMs);
-            }
-        }
-
-        // Mouse events - seek on release only
-        progressBar.addEventListener('mousedown', (e) => {
-            startSeeking();
-            seek(e);
-        });
-
-        // Touch events - seek on release only for smoother mobile experience
-        progressBar.addEventListener('touchstart', (e) => {
-            startSeeking();
-            seek(e);
-        }, { passive: true });
-
-        document.addEventListener('mousemove', (e) => { if (isSeeking) seek(e); });
-        document.addEventListener('touchmove', (e) => { if (isSeeking) seek(e); }, { passive: true });
-
-        document.addEventListener('mouseup', (e) => {
-            if (isSeeking) {
-                const percent = seek(e);
-                performSeek(percent);
-                endSeeking();
-            }
-        });
-
-        document.addEventListener('touchend', () => {
-            if (isSeeking) {
-                performSeek(lastSeekPercent);
-                endSeeking();
-            }
-        });
-
-        // Cancel seeking if touch is cancelled
-        document.addEventListener('touchcancel', () => {
-            if (isSeeking) {
-                endSeeking();
-            }
-        });
-
-        // Scroll listener for mini player
-        window.addEventListener('scroll', checkMiniPlayer, { passive: true });
-
-        // ============================================
-        // MEDIA SESSION API - Lock Screen Controls
-        // ============================================
-
-        // Default artwork as data URI (orange music note icon)
-        const DEFAULT_ARTWORK = 'data:image/svg+xml,' + encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-                <rect width="512" height="512" fill="#ff5500"/>
-                <path fill="white" d="M256 80c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176S353.2 80 256 80zm80 200h-64v80c0 26.5-21.5 48-48 48s-48-21.5-48-48 21.5-48 48-48c8.7 0 16.9 2.3 24 6.4V152h88v128z"/>
-            </svg>
-        `);
-
-        // Update Media Session metadata
         function updateMediaSession() {
             if (!('mediaSession' in navigator)) return;
-
-            const title = getTrackTitle(currentIndex) || 'Unknown Track';
-
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: title,
-                artist: 'SoundCloud',
-                album: 'Music Player',
-                artwork: [
-                    { src: DEFAULT_ARTWORK, sizes: '512x512', type: 'image/svg+xml' }
-                ]
+                title: getTrackTitle(currentIndex) || 'Unknown Track',
+                artist: 'SoundCloud', album: 'Music Player',
+                artwork: [{ src: DEFAULT_ARTWORK, sizes: '512x512', type: 'image/svg+xml' }]
             });
         }
 
-        // Update position state for lock screen scrubbing
         function updatePositionState() {
-            if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
-            if (duration <= 0) return;
-
-            widget.getPosition(function (position) {
-                try {
-                    navigator.mediaSession.setPositionState({
-                        duration: duration / 1000,  // Convert ms to seconds
-                        playbackRate: 1,
-                        position: Math.min(position / 1000, duration / 1000)  // Convert ms to seconds
-                    });
-                } catch (e) {
-                    console.log('Position state error:', e);
-                }
+            if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState || duration <= 0) return;
+            widget.getPosition(function(p) {
+                try { navigator.mediaSession.setPositionState({ duration: duration / 1000, playbackRate: 1, position: Math.min(p / 1000, duration / 1000) }); } catch (e) {}
             });
         }
 
-        // Setup Media Session action handlers
-        function setupMediaSessionHandlers() {
+        (function setupMediaSessionHandlers() {
             if (!('mediaSession' in navigator)) return;
-
-            const actionHandlers = [
-                ['play', () => {
-                    widget.play();
-                    navigator.mediaSession.playbackState = 'playing';
-                }],
-                ['pause', () => {
-                    widget.pause();
-                    navigator.mediaSession.playbackState = 'paused';
-                }],
-                ['previoustrack', () => {
-                    widget.prev();
-                }],
-                ['nexttrack', () => {
-                    if (queue.length > 0) {
-                        const nextTrack = queue.shift();
-                        renderQueue();
-                        renderTracks();
-                        playTrack(nextTrack);
-                    } else {
-                        widget.next();
-                    }
-                }],
-                ['seekto', (details) => {
-                    if (details.seekTime !== undefined && duration > 0) {
-                        const seekMs = details.seekTime * 1000;  // Convert seconds to ms
-                        widget.seekTo(seekMs);
-                        updatePositionState();
-                    }
-                }],
-                ['seekbackward', (details) => {
-                    const skipTime = details.seekOffset || 10;  // Default 10 seconds
-                    widget.getPosition(function (pos) {
-                        const newPos = Math.max(0, pos - (skipTime * 1000));
-                        widget.seekTo(newPos);
-                        updatePositionState();
-                    });
-                }],
-                ['seekforward', (details) => {
-                    const skipTime = details.seekOffset || 10;  // Default 10 seconds
-                    widget.getPosition(function (pos) {
-                        const newPos = Math.min(duration, pos + (skipTime * 1000));
-                        widget.seekTo(newPos);
-                        updatePositionState();
-                    });
-                }],
-                ['stop', () => {
-                    widget.pause();
-                    widget.seekTo(0);
-                    navigator.mediaSession.playbackState = 'paused';
-                }]
+            const h = [
+                ['play', () => { widget.play(); navigator.mediaSession.playbackState = 'playing'; }],
+                ['pause', () => { widget.pause(); navigator.mediaSession.playbackState = 'paused'; }],
+                ['previoustrack', () => widget.prev()],
+                ['nexttrack', () => { if (queue.length > 0) { const n = queue.shift(); renderQueue(); renderTracks(); playTrack(n); } else if (isShuffled) playTrack(getRandomTrackIndex()); else widget.next(); }],
+                ['seekto', (d) => { if (d.seekTime !== undefined && duration > 0) { widget.seekTo(d.seekTime * 1000); updatePositionState(); } }],
+                ['seekbackward', (d) => { widget.getPosition(p => { widget.seekTo(Math.max(0, p - (d.seekOffset || 10) * 1000)); updatePositionState(); }); }],
+                ['seekforward', (d) => { widget.getPosition(p => { widget.seekTo(Math.min(duration, p + (d.seekOffset || 10) * 1000)); updatePositionState(); }); }],
+                ['stop', () => { widget.pause(); widget.seekTo(0); navigator.mediaSession.playbackState = 'paused'; }]
             ];
+            for (const [a, fn] of h) { try { navigator.mediaSession.setActionHandler(a, fn); } catch (e) {} }
+        })();
 
-            for (const [action, handler] of actionHandlers) {
-                try {
-                    navigator.mediaSession.setActionHandler(action, handler);
-                } catch (error) {
-                    console.log(`Media session action "${action}" not supported`);
-                }
-            }
-        }
-
-        // Initialize Media Session handlers
-        setupMediaSessionHandlers();
-
-        // Hook into existing events to update Media Session
-        const originalUpdateCurrentTrack = updateCurrentTrack;
-        updateCurrentTrack = function (index) {
-            originalUpdateCurrentTrack(index);
-            updateMediaSession();
-            updatePositionState();
+        // Hook Media Session into updates
+        const _origUpdateCurrentTrack = updateCurrentTrack;
+        updateCurrentTrack = function(index) {
+            _origUpdateCurrentTrack(index);
+            updateMediaSession(); updatePositionState();
+        };
+        const _origUpdatePlayingState = updatePlayingState;
+        updatePlayingState = function(playing) {
+            _origUpdatePlayingState(playing);
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+            if (fsOpen) syncFullscreenState();
         };
 
-        const originalUpdatePlayingState = updatePlayingState;
-        updatePlayingState = function (playing) {
-            originalUpdatePlayingState(playing);
-            if ('mediaSession' in navigator) {
-                navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
-            }
-        };
-
-        // Update position state periodically for accurate lock screen scrubbing
-        setInterval(() => {
-            if (isPlaying && duration > 0) {
-                updatePositionState();
-            }
-        }, 1000);
+        setInterval(() => { if (isPlaying && duration > 0) updatePositionState(); }, 1000);
     </script>
 </body>
 
