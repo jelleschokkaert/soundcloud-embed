@@ -249,6 +249,14 @@
             transform: translateY(0);
         }
 
+        .fullscreen-player.dimming {
+            transition: none;
+        }
+
+        .fullscreen-player.spring-back {
+            transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
         .fs-drag-handle {
             width: 40px;
             height: 5px;
@@ -296,6 +304,10 @@
             display: flex;
             justify-content: center;
             margin-bottom: 0.5rem;
+        }
+
+        .fullscreen-player.open .fs-artwork {
+            display: none;
         }
 
         .fs-artwork svg {
@@ -445,6 +457,129 @@
         .fs-control-btn.shuffle-active {
             color: var(--accent);
             background: var(--accent-dim);
+        }
+
+        /* ========== QUEUE IN FULLSCREEN OVERLAY ========== */
+        .fs-queue {
+            flex-shrink: 0;
+            max-height: 45vh;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            margin-top: 1rem;
+            padding: 0;
+        }
+
+        .fs-queue .queue-section {
+            margin: 0;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+        }
+
+        .fs-queue .queue-header {
+            padding: 0.4rem 0;
+            min-height: 32px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .fs-queue .queue-list {
+            max-height: 38vh;
+        }
+
+        .fs-queue .queue-item {
+            padding: 0.35rem 0.25rem;
+            min-height: 40px;
+        }
+
+        .fs-queue .queue-item-title {
+            font-size: 0.75rem;
+        }
+
+        .fs-queue .queue-drag-handle {
+            width: 28px;
+        }
+
+        .fs-queue .queue-remove {
+            width: 36px;
+            height: 36px;
+        }
+
+        .fs-queue .queue-badge {
+            font-size: 0.65rem;
+        }
+
+        /* ========== COMING UP (PLAYLIST PREVIEW) ========== */
+        .fs-up-next {
+            flex-shrink: 0;
+            max-height: 30vh;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            margin-top: 0.5rem;
+            padding: 0;
+        }
+
+        .up-next-section {
+            margin: 0;
+            background: transparent;
+            border: none;
+        }
+
+        .up-next-header {
+            padding: 0.35rem 0;
+            min-height: 28px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .up-next-list {
+            max-height: 26vh;
+        }
+
+        .up-next-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.3rem 0.25rem;
+            min-height: 36px;
+            cursor: pointer;
+            transition: background 0.1s;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .up-next-item:last-child {
+            border-bottom: none;
+        }
+
+        .up-next-item:active {
+            background: var(--bg-active);
+        }
+
+        .up-next-item.playing {
+            color: var(--accent);
+        }
+
+        .up-next-item.playing .up-next-item-title {
+            font-weight: 600;
+        }
+
+        .up-next-item-num {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            width: 16px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .up-next-item-title {
+            flex: 1;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* ========== QUEUE SECTION ========== */
@@ -1035,10 +1170,27 @@
                 </button>
                 <div style="width:52px;height:52px;" aria-hidden="true"></div>
             </div>
+            <div class="fs-queue">
+                <div class="queue-section" id="fsQueueSection">
+                    <div class="queue-header" id="fsQueueHeader">
+                        <div class="queue-title">
+                            <span>Up Next</span>
+                            <span class="queue-badge" id="fsQueueBadge">0</span>
+                        </div>
+                    </div>
+                    <div class="queue-list" id="fsQueueList"></div>
+                </div>
+            </div>
+            <div class="fs-up-next">
+                <div class="up-next-section">
+                    <div class="up-next-header">Coming Up</div>
+                    <div class="up-next-list" id="fsUpNextList"></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Queue Section -->
+    <!-- Queue Section (main content) -->
     <div class="queue-section hidden" id="queueSection">
         <div class="queue-header" id="queueHeader">
             <div class="queue-title">
@@ -1285,6 +1437,8 @@
         let currentIndex = -1;
         let isPlaying = false;
         let isShuffled = false;
+        let playOrder = [];
+        let playOrderIndex = 0;
         let duration = 0;
         let queue = [];
         let trackCache = {};
@@ -1308,6 +1462,11 @@
         const queueHeader = document.getElementById('queueHeader');
         const queueList = document.getElementById('queueList');
         const queueBadge = document.getElementById('queueBadge');
+        const fsQueueSection = document.getElementById('fsQueueSection');
+        const fsQueueHeader = document.getElementById('fsQueueHeader');
+        const fsQueueList = document.getElementById('fsQueueList');
+        const fsQueueBadge = document.getElementById('fsQueueBadge');
+        const fsUpNextList = document.getElementById('fsUpNextList');
         const miniPlayer = document.getElementById('miniPlayer');
         const miniPlayBtn = document.getElementById('miniPlayBtn');
         const miniPlayIcon = document.getElementById('miniPlayIcon');
@@ -1518,7 +1677,6 @@
             if (dx > SWIPE_THRESHOLD) {
                 if (!queue.includes(idx)) {
                     queue.push(idx);
-                    if (isShuffled) shuffleArray(queue);
                     renderQueue(); renderTracks();
                     showToast('Added to queue');
                 } else {
@@ -1540,20 +1698,10 @@
         // ========== QUEUE ==========
         function renderQueue() {
             queueBadge.textContent = queue.length;
+            fsQueueBadge.textContent = queue.length;
 
-            // Hide entire section when empty
-            if (queue.length === 0) {
-                queueSection.classList.add('hidden');
-                queueList.innerHTML = '';
-                return;
-            }
-
-            // Show and auto-expand when items are added
-            queueSection.classList.remove('hidden');
-            queueSection.classList.remove('collapsed');
-            queueCollapsed = false;
-
-            queueList.innerHTML = queue.map((trackIndex, i) => `
+            // Build HTML once
+            const queueHtml = queue.map((trackIndex, i) => `
                 <div class="queue-item" data-index="${trackIndex}" data-queue-pos="${i}">
                     <div class="queue-drag-handle" data-queue-pos="${i}">
                         <svg viewBox="0 0 24 24"><path d="M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
@@ -1566,6 +1714,26 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
                     </button>
                 </div>`).join('');
+
+            // Hide entire section when empty
+            if (queue.length === 0) {
+                queueSection.classList.add('hidden');
+                fsQueueSection.classList.add('hidden');
+                queueList.innerHTML = '';
+                fsQueueList.innerHTML = '';
+                return;
+            }
+
+            // Show when items are added
+            queueSection.classList.remove('hidden');
+            queueSection.classList.remove('collapsed');
+            queueCollapsed = false;
+            fsQueueSection.classList.remove('hidden');
+
+            // Update both list containers with same content
+            queueList.innerHTML = queueHtml;
+            fsQueueList.innerHTML = queueHtml;
+            renderUpNext();
         }
 
         // Queue event delegation (tap to play, X to remove)
@@ -1580,7 +1748,30 @@
             }
             const item = e.target.closest('.queue-item');
             if (item) {
-                queue.splice(parseInt(item.dataset.queuePos), 1);
+                playTrack(parseInt(item.dataset.index));
+            }
+        });
+
+        // fsQueueList click handler (same logic as queueList)
+        fsQueueList.addEventListener('click', (e) => {
+            if (e.target.closest('.queue-drag-handle')) return;
+            const removeBtn = e.target.closest('.queue-remove');
+            if (removeBtn) {
+                e.stopPropagation();
+                queue.splice(parseInt(removeBtn.dataset.queuePos), 1);
+                renderQueue(); renderTracks();
+                return;
+            }
+            const item = e.target.closest('.queue-item');
+            if (item) {
+                playTrack(parseInt(item.dataset.index));
+            }
+        });
+
+        // fsUpNextList click handler (play track)
+        fsUpNextList.addEventListener('click', (e) => {
+            const item = e.target.closest('.up-next-item');
+            if (item) {
                 playTrack(parseInt(item.dataset.index));
             }
         });
@@ -1684,10 +1875,99 @@
 
         queueList.addEventListener('touchcancel', () => { dragCleanup(); });
 
+        // Drag-to-reorder for fsQueueList (same logic, different container)
+        let fsDragItem = null, fsDragStartY = 0, fsDragIndex = -1, fsDragActive = false;
+        let fsDragItemRects = [];
+
+        function fsDragCleanup() {
+            if (!fsDragItem) return;
+            const items = Array.from(fsQueueList.querySelectorAll('.queue-item'));
+            items.forEach(el => {
+                el.classList.remove('dragging', 'drag-shift-down', 'drag-shift-up');
+                el.style.transform = '';
+            });
+            fsQueueList.style.userSelect = '';
+            fsDragItem = null;
+            fsDragIndex = -1;
+            fsDragActive = false;
+        }
+
+        fsQueueList.addEventListener('touchstart', (e) => {
+            const handle = e.target.closest('.queue-drag-handle');
+            if (!handle) return;
+            const item = handle.closest('.queue-item');
+            if (!item) return;
+
+            fsDragIndex = parseInt(item.dataset.queuePos);
+            fsDragItem = item;
+            fsDragStartY = e.touches[0].clientY;
+            fsDragActive = false;
+
+            fsDragItemRects = Array.from(fsQueueList.querySelectorAll('.queue-item')).map(el => {
+                const r = el.getBoundingClientRect();
+                return { el, top: r.top, mid: r.top + r.height / 2, pos: parseInt(el.dataset.queuePos) };
+            });
+        }, { passive: true });
+
+        fsQueueList.addEventListener('touchmove', (e) => {
+            if (!fsDragItem) return;
+            const y = e.touches[0].clientY;
+            const dy = y - fsDragStartY;
+
+            if (!fsDragActive) {
+                if (Math.abs(dy) < 6) return;
+                fsDragActive = true;
+                fsDragItem.classList.add('dragging');
+                if ('vibrate' in navigator) navigator.vibrate(12);
+                fsQueueList.style.userSelect = 'none';
+            }
+
+            fsDragItem.style.transform = `translateY(${dy}px) scale(1.02)`;
+
+            fsDragItemRects.forEach(r => {
+                if (r.pos === fsDragIndex) return;
+                r.el.classList.remove('drag-shift-down', 'drag-shift-up');
+                if (dy > 0 && r.pos > fsDragIndex && y > r.mid) {
+                    r.el.classList.add('drag-shift-up');
+                }
+                if (dy < 0 && r.pos < fsDragIndex && y < r.mid) {
+                    r.el.classList.add('drag-shift-down');
+                }
+            });
+        }, { passive: true });
+
+        fsQueueList.addEventListener('touchend', () => {
+            if (!fsDragItem || !fsDragActive) { fsDragCleanup(); return; }
+
+            let targetIndex = fsDragIndex;
+            const shifted = fsDragItemRects.filter(r =>
+                r.el.classList.contains('drag-shift-up') || r.el.classList.contains('drag-shift-down')
+            );
+
+            if (shifted.length > 0) {
+                if (shifted[0].el.classList.contains('drag-shift-up')) {
+                    targetIndex = Math.max(...shifted.map(r => r.pos));
+                } else {
+                    targetIndex = Math.min(...shifted.map(r => r.pos));
+                }
+            }
+
+            if (targetIndex !== fsDragIndex && targetIndex >= 0 && targetIndex < queue.length) {
+                const [moved] = queue.splice(fsDragIndex, 1);
+                queue.splice(targetIndex, 0, moved);
+                if ('vibrate' in navigator) navigator.vibrate(8);
+            }
+
+            fsDragCleanup();
+            renderQueue();
+        }, { passive: true });
+
+        fsQueueList.addEventListener('touchcancel', () => { fsDragCleanup(); });
+
         function toggleQueue(index) {
             const pos = queue.indexOf(index);
             if (pos > -1) { queue.splice(pos, 1); showToast('Removed from queue'); }
-            else { queue.push(index); if (isShuffled) shuffleArray(queue); showToast('Added to queue'); }
+            else { queue.push(index); showToast('Added to queue'); }
             renderQueue(); renderTracks();
         }
 
@@ -1696,19 +1976,63 @@
             queueSection.classList.toggle('collapsed', queueCollapsed);
         });
 
-        // ========== SHUFFLE ==========
-        function shuffleArray(arr) {
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
+        // ========== SHUFFLE & ORDER ==========
+        function generatePlayOrder() {
+            // Maak een lijst van 0 tot (trackCount - 1)
+            playOrder = Array.from({length: trackCount}, (_, i) => i);
+            
+            if (isShuffled) {
+                // Fisher-Yates shuffle
+                for (let i = playOrder.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [playOrder[i], playOrder[j]] = [playOrder[j], playOrder[i]];
+                }
+            }
+            // Zorg dat de speler weet waar we nu zijn in de nieuwe volgorde
+            playOrderIndex = playOrder.indexOf(currentIndex);
+            if (playOrderIndex === -1) playOrderIndex = 0;
+        }
+
+        function getUpNextTracks(n) {
+            const results = [];
+            let tempIndex = playOrderIndex + 1;
+            
+            // Wrap around if needed to get n tracks
+            for (let i = 0; results.length < n; i++) {
+                const idx = (tempIndex + i) % playOrder.length;
+                results.push(playOrder[idx]);
+            }
+            return results;
+        }
+
+        // Centrale functie om het volgende nummer in de volgorde te spelen
+        function playNextInOrder() {
+            if (queue.length > 0) {
+                const n = queue.shift();
+                renderQueue();
+                renderTracks();
+                playTrack(n);
+            } else {
+                const nextIndex = playOrderIndex + 1;
+                const actualIndex = nextIndex >= playOrder.length ? 0 : nextIndex;
+                playTrack(playOrder[actualIndex]);
             }
         }
 
-        function getRandomTrackIndex() {
-            if (trackCount <= 1) return currentIndex;
-            let r;
-            do { r = Math.floor(Math.random() * trackCount); } while (r === currentIndex);
-            return r;
+        function playPrevInOrder() {
+            const prevIndex = playOrderIndex - 1;
+            const actualIndex = prevIndex < 0 ? playOrder.length - 1 : prevIndex;
+            playTrack(playOrder[actualIndex]);
+        }
+
+        function renderUpNext() {
+            if (!fsUpNextList) return;
+            const tracks = getUpNextTracks(10);
+            fsUpNextList.innerHTML = tracks.map((trackIndex, i) => `
+                <div class="up-next-item ${trackIndex === currentIndex ? 'playing' : ''}" data-index="${trackIndex}">
+                    <span class="up-next-item-num">${i + 1}</span>
+                    <span class="up-next-item-title">${escapeHTML(getTrackTitle(trackIndex))}</span>
+                </div>`).join('');
         }
 
         // ========== PLAYBACK ==========
@@ -1751,6 +2075,7 @@
 
         function updateCurrentTrack(index) {
             currentIndex = index;
+            playOrderIndex = playOrder.indexOf(index);
             const title = getTrackTitle(index);
             currentTrackNameEl.textContent = title;
             miniTrackName.textContent = title;
@@ -1758,6 +2083,7 @@
             if (fsOpen) syncFullscreenState();
             fetchCurrentTrackInfo();
             renderTracks();
+            if (fsOpen) renderUpNext();
             // Scroll active track into view if off-screen
             const activeWrapper = trackListEl.querySelector(`.track-item-wrapper[data-index="${index}"]`);
             if (activeWrapper) {
@@ -1792,6 +2118,7 @@
                 history.pushState({ fsOpen: true }, '', '');
             }
             syncFullscreenState();
+            renderUpNext();
         }
 
         function closeFullscreen() {
@@ -1808,45 +2135,115 @@
         fsCloseBtn.addEventListener('click', closeFullscreen);
 
         fsPlayBtn.addEventListener('click', () => widget.toggle());
-        fsPrevBtn.addEventListener('click', () => widget.prev());
+        fsPrevBtn.addEventListener('click', () => playPrevInOrder());
         fsNextBtn.addEventListener('click', () => {
-            if (queue.length > 0) { const n = queue.shift(); renderQueue(); renderTracks(); playTrack(n); }
-            else if (isShuffled) playTrack(getRandomTrackIndex());
-            else widget.next();
+            playNextInOrder();
         });
         fsShuffleBtn.addEventListener('click', () => {
             isShuffled = !isShuffled;
             fsShuffleBtn.classList.toggle('shuffle-active', isShuffled);
-            if (isShuffled && queue.length > 0) { shuffleArray(queue); renderQueue(); }
+            generatePlayOrder(); // Herschik de lijst op basis van de toggle
+            renderUpNext();
         });
 
-        // Fullscreen swipe-down to close
-        let fsTouchStartY = 0, fsDragging = false;
+        // Fullscreen swipe-down to close (optimized)
+        const SWIPE_RESISTANCE_START = 20;
+        const SWIPE_RESISTANCE_FACTOR = 0.3;
+        const SWIPE_CLOSE_DISTANCE = 60;
+        const SWIPE_CLOSE_VELOCITY = 0.25;
+        let fsTouchStartY = 0, fsTouchStartTime = 0, fsDragging = false;
+        const PROGRESS_BAR_GUARD = 30;
+
+        function isInProgressZone(y) {
+            const bar = fsProgressBar.getBoundingClientRect();
+            return y >= bar.top - PROGRESS_BAR_GUARD && y <= bar.bottom + PROGRESS_BAR_GUARD;
+        }
+
         fullscreenPlayer.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.fs-progress-bar')) return;
+            if (isInProgressZone(e.touches[0].clientY)) return;
             fsTouchStartY = e.touches[0].clientY;
+            fsTouchStartTime = Date.now();
             fsDragging = false;
+            fullscreenPlayer.classList.remove('spring-back', 'dimming');
+            fullscreenPlayer.style.transition = '';
+            fullscreenPlayer.style.transform = '';
+            fullscreenPlayer.style.background = 'var(--bg)';
         }, { passive: true });
 
         fullscreenPlayer.addEventListener('touchmove', (e) => {
-            if (e.target.closest('.fs-progress-bar')) return;
+            if (fsDragging === 'canceled') return;
             const deltaY = e.touches[0].clientY - fsTouchStartY;
-            if (deltaY > 20) {
-                fsDragging = true;
-                e.preventDefault();
-                fullscreenPlayer.style.transition = 'none';
-                fullscreenPlayer.style.transform = `translateY(${deltaY}px)`;
+
+            if (deltaY <= 0) {
+                if (fsDragging) {
+                    fsDragging = 'canceled';
+                    fullscreenPlayer.style.transform = '';
+                    fullscreenPlayer.style.background = 'var(--bg)';
+                }
+                return;
             }
+
+            if (!fsDragging) {
+                if (isInProgressZone(e.touches[0].clientY)) return;
+                fsDragging = true;
+                fullscreenPlayer.classList.add('dimming');
+            }
+
+            e.preventDefault();
+            fullscreenPlayer.classList.remove('spring-back');
+
+            let adjustedDeltaY;
+            if (deltaY < SWIPE_RESISTANCE_START) {
+                adjustedDeltaY = deltaY * SWIPE_RESISTANCE_FACTOR;
+            } else {
+                const resisted = SWIPE_RESISTANCE_START * SWIPE_RESISTANCE_FACTOR;
+                adjustedDeltaY = resisted + (deltaY - SWIPE_RESISTANCE_START);
+            }
+
+            const progress = Math.min(deltaY / 200, 1);
+            const scale = 1 - (progress * 0.03);
+            const dimOpacity = progress * 0.5;
+
+            fullscreenPlayer.style.transform = `translateY(${adjustedDeltaY}px) scale(${scale})`;
+            fullscreenPlayer.style.background = `rgba(10, 10, 11, ${1 - dimOpacity})`;
         }, { passive: false });
 
         fullscreenPlayer.addEventListener('touchend', (e) => {
-            if (!fsDragging) return;
+            if (fsDragging === 'canceled' || !fsDragging) {
+                fsDragging = false;
+                return;
+            }
+
             const deltaY = e.changedTouches[0].clientY - fsTouchStartY;
-            fullscreenPlayer.style.transition = '';
-            if (deltaY > 120) closeFullscreen();
-            else fullscreenPlayer.style.transform = '';
+            const deltaTime = Date.now() - fsTouchStartTime;
+            const velocity = deltaY / deltaTime;
+
+            fullscreenPlayer.classList.add('spring-back');
+            fullscreenPlayer.classList.remove('dimming');
+            fullscreenPlayer.style.background = 'var(--bg)';
+
+            const shouldClose = deltaY > SWIPE_CLOSE_DISTANCE ||
+                (velocity > SWIPE_CLOSE_VELOCITY && deltaY > SWIPE_RESISTANCE_START);
+
+            if (shouldClose) {
+                if ('vibrate' in navigator) navigator.vibrate(5);
+                fullscreenPlayer.style.transform = '';
+                closeFullscreen();
+            } else {
+                fullscreenPlayer.style.transform = '';
+            }
+
             fsDragging = false;
         }, { passive: true });
+
+        fullscreenPlayer.addEventListener('touchcancel', () => {
+            if (fsDragging) {
+                fullscreenPlayer.classList.add('spring-back');
+                fullscreenPlayer.style.transform = '';
+                fullscreenPlayer.style.background = 'var(--bg)';
+                fsDragging = false;
+            }
+        });
 
         window.addEventListener('popstate', () => { if (fsOpen) closeFullscreen(); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && fsOpen) closeFullscreen(); });
@@ -1875,7 +2272,6 @@
             function updateFill(p) {
                 if (useWidth) fillEl.style.width = (p * 100) + '%';
                 else fillEl.style.transform = 'scaleX(' + p + ')';
-                syncAllProgressBars(p * 100);
             }
             function onTouchMove(e) { lastPercent = getPercent(e); updateFill(lastPercent); }
             function onMouseMove(e) { lastPercent = getPercent(e); updateFill(lastPercent); }
@@ -1884,6 +2280,7 @@
                 if (barEl === fsProgressBar) fullscreenPlayer.classList.remove('seeking');
                 if (duration > 0) widget.seekTo(lastPercent * duration);
                 if (barEl === fsProgressBar) fsTimeNow.textContent = formatTime(lastPercent * duration);
+                syncAllProgressBars(lastPercent * 100);
                 document.removeEventListener('touchmove', onTouchMove);
                 document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('touchend', endSeek);
@@ -1901,7 +2298,7 @@
                 seeking = true; document.body.classList.add('seeking');
                 if (barEl === fsProgressBar) fullscreenPlayer.classList.add('seeking');
                 lastPercent = getPercent(e); updateFill(lastPercent);
-                document.addEventListener('touchmove', onTouchMove, { passive: true });
+                document.addEventListener('touchmove', onTouchMove, { passive: false });
                 document.addEventListener('touchend', endSeek);
                 document.addEventListener('touchcancel', cancelSeek);
             }, { passive: true });
@@ -1936,18 +2333,19 @@
 
         // ========== COMPACT BAR CONTROLS ==========
         playBtn.addEventListener('click', () => widget.toggle());
-        prevBtn.addEventListener('click', () => widget.prev());
+        prevBtn.addEventListener('click', () => playPrevInOrder());
         nextBtn.addEventListener('click', () => {
-            if (queue.length > 0) { const n = queue.shift(); renderQueue(); renderTracks(); playTrack(n); }
-            else if (isShuffled) playTrack(getRandomTrackIndex());
-            else widget.next();
+            playNextInOrder();
         });
 
         // ========== WIDGET EVENTS ==========
         widget.bind(SC.Widget.Events.READY, function() {
             widget.getSounds(function(sounds) {
                 tracks = sounds;
-                if (sounds.length > 0) trackCount = sounds.length;
+                if (sounds.length > 0) {
+                    trackCount = sounds.length;
+                    generatePlayOrder(); // <-- Initialiseer de volgorde hier
+                }
                 renderTracks();
             });
             widget.bind(SC.Widget.Events.PLAY, function() { updatePlayingState(true); fetchCurrentTrackInfo(); });
@@ -1960,9 +2358,7 @@
                 }
             });
             widget.bind(SC.Widget.Events.FINISH, function() {
-                if (queue.length > 0) { const n = queue.shift(); renderQueue(); renderTracks(); playTrack(n); }
-                else if (isShuffled) playTrack(getRandomTrackIndex());
-                else if (currentIndex < trackCount - 1) widget.next();
+                playNextInOrder();
             });
             widget.getCurrentSoundIndex(function(index) { if (index >= 0) updateCurrentTrack(index); });
             setInterval(() => {
@@ -2009,8 +2405,8 @@
             const h = [
                 ['play', () => { widget.play(); navigator.mediaSession.playbackState = 'playing'; }],
                 ['pause', () => { widget.pause(); navigator.mediaSession.playbackState = 'paused'; }],
-                ['previoustrack', () => widget.prev()],
-                ['nexttrack', () => { if (queue.length > 0) { const n = queue.shift(); renderQueue(); renderTracks(); playTrack(n); } else if (isShuffled) playTrack(getRandomTrackIndex()); else widget.next(); }],
+                ['previoustrack', () => playPrevInOrder()],
+                ['nexttrack', () => playNextInOrder()],
                 ['seekto', (d) => { if (d.seekTime !== undefined && duration > 0) { widget.seekTo(d.seekTime * 1000); updatePositionState(); } }],
                 ['seekbackward', (d) => { widget.getPosition(p => { widget.seekTo(Math.max(0, p - (d.seekOffset || 10) * 1000)); updatePositionState(); }); }],
                 ['seekforward', (d) => { widget.getPosition(p => { widget.seekTo(Math.min(duration, p + (d.seekOffset || 10) * 1000)); updatePositionState(); }); }],
