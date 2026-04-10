@@ -303,29 +303,6 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        .fs-artwork {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .fullscreen-player.open .fs-artwork {
-            display: none;
-        }
-
-        .fs-artwork svg {
-            opacity: 0.12;
-        }
-
-        .playing .fs-artwork svg {
-            animation: pulse-art 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse-art {
-            0%, 100% { opacity: 0.1; transform: scale(1); }
-            50% { opacity: 0.2; transform: scale(1.03); }
-        }
-
         .fs-track-info {
             text-align: center;
             padding: 0 1rem;
@@ -1190,13 +1167,6 @@
             <svg viewBox="0 0 24 24"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>
         </button>
         <div class="fs-content">
-            <div class="fs-artwork">
-                <svg viewBox="0 0 120 120" width="120" height="120">
-                    <circle cx="60" cy="60" r="56" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
-                    <circle cx="60" cy="60" r="36" fill="none" stroke="var(--accent)" stroke-width="1"/>
-                    <circle cx="60" cy="60" r="18" fill="var(--accent)"/>
-                </svg>
-            </div>
             <div class="fs-track-info">
                 <div class="fs-label">Now Playing</div>
                 <div class="fs-track-name" id="fsTrackName">-</div>
@@ -1234,6 +1204,7 @@
                             <span>Up Next</span>
                             <span class="queue-badge" id="fsQueueBadge">0</span>
                         </div>
+                        <svg class="queue-chevron" viewBox="0 0 24 24"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg>
                     </div>
                     <div class="queue-list" id="fsQueueList"></div>
                 </div>
@@ -1797,7 +1768,7 @@
             // Update both list containers with same content
             queueList.innerHTML = queueHtml;
             fsQueueList.innerHTML = queueHtml;
-            renderTrackBrowser();
+            updateTrackBrowserQueueState();
         }
 
         // Queue event delegation (tap to play, X to remove)
@@ -1852,14 +1823,13 @@
             }
             queue.push(index);
             showToast('Added to queue');
-            renderQueue(); renderTrackBrowser();
+            renderQueue();
             if ('vibrate' in navigator) navigator.vibrate(10);
         });
 
         // ========== QUEUE DRAG-TO-REORDER ==========
         let dragItem = null, dragStartY = 0, dragIndex = -1, dragActive = false;
-        let dragItemRects = []; // cached rects at drag start
-        const ITEM_H = 48; // approximate item height
+        let dragItemRects = [];
 
         function dragCleanup() {
             if (!dragItem) return;
@@ -2051,10 +2021,13 @@
             renderQueue(); renderTracks();
         }
 
-        queueHeader.addEventListener('click', () => {
+        function toggleQueueCollapse() {
             queueCollapsed = !queueCollapsed;
             queueSection.classList.toggle('collapsed', queueCollapsed);
-        });
+            fsQueueSection.classList.toggle('collapsed', queueCollapsed);
+        }
+        queueHeader.addEventListener('click', toggleQueueCollapse);
+        fsQueueHeader.addEventListener('click', toggleQueueCollapse);
 
         // ========== SHUFFLE & ORDER ==========
         function generatePlayOrder() {
@@ -2110,26 +2083,41 @@
             }
             const indices = browserShuffledIndices;
             
-            fsTrackBrowserList.innerHTML = indices.map((originalIndex) => {
+            fsTrackBrowserList.innerHTML = indices.map((originalIndex, displayIndex) => {
                 const isInQueue = queue.includes(originalIndex);
                 const title = escapeHTML(getTrackTitle(originalIndex));
                 const dur = getTrackDuration(originalIndex);
-                const displayNum = indices.indexOf(originalIndex) + 1;
                 return `
                     <div class="track-browser-item ${isInQueue ? 'in-queue' : ''}" data-index="${originalIndex}">
-                        <span class="browser-track-num">${displayNum}</span>
+                        <span class="browser-track-num">${displayIndex + 1}</span>
                         <div class="browser-track-info">
                             <div class="browser-track-title">${title}</div>
                             ${dur ? `<div class="browser-track-duration">${dur}</div>` : ''}
                         </div>
                         <div class="browser-add-icon">
-                            ${isInQueue 
+                            ${isInQueue
                                 ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>'
                                 : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>'
                             }
                         </div>
                     </div>`;
             }).join('');
+        }
+
+        function updateTrackBrowserQueueState() {
+            if (!fsTrackBrowserList) return;
+            const items = fsTrackBrowserList.querySelectorAll('.track-browser-item');
+            items.forEach(item => {
+                const idx = parseInt(item.dataset.index);
+                const isInQueue = queue.includes(idx);
+                item.classList.toggle('in-queue', isInQueue);
+                const icon = item.querySelector('.browser-add-icon');
+                if (icon) {
+                    icon.innerHTML = isInQueue
+                        ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>'
+                        : '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>';
+                }
+            });
         }
 
         // ========== PLAYBACK ==========
@@ -2155,7 +2143,9 @@
         function fetchCurrentTrackInfo() {
             widget.getCurrentSound(function(sound) {
                 if (sound && currentIndex >= 0) {
-                    trackCache[currentIndex] = { title: sound.title || `Track ${currentIndex + 1}`, duration: sound.duration || 0 };
+                    trackCache[currentIndex] = trackCache[currentIndex] || {};
+                    trackCache[currentIndex].title = sound.title || `Track ${currentIndex + 1}`;
+                    trackCache[currentIndex].duration = sound.duration || trackCache[currentIndex].duration || 0;
                     const title = sound.title || `Track ${currentIndex + 1}`;
                     currentTrackNameEl.textContent = title;
                     miniTrackName.textContent = title;
@@ -2235,7 +2225,7 @@
         expandBtn.addEventListener('click', openFullscreen);
         fsCloseBtn.addEventListener('click', closeFullscreen);
 
-        fsPlayBtn.addEventListener('click', () => widget.toggle());
+        fsPlayBtn.addEventListener('click', toggleOrStart);
         fsPrevBtn.addEventListener('click', () => playPrevInOrder());
         fsNextBtn.addEventListener('click', () => {
             playNextInOrder();
@@ -2449,12 +2439,16 @@
             miniPlayer.classList.toggle('visible', rect.bottom < 0 && currentIndex >= 0);
         }
 
-        miniPlayBtn.addEventListener('click', () => widget.toggle());
+        miniPlayBtn.addEventListener('click', toggleOrStart);
         miniExpand.addEventListener('click', openFullscreen);
         miniInfo.addEventListener('click', openFullscreen);
 
         // ========== COMPACT BAR CONTROLS ==========
-        playBtn.addEventListener('click', () => widget.toggle());
+        function toggleOrStart() {
+            if (currentIndex === -1) { playTrack(playOrder[0]); return; }
+            widget.toggle();
+        }
+        playBtn.addEventListener('click', toggleOrStart);
         prevBtn.addEventListener('click', () => playPrevInOrder());
         nextBtn.addEventListener('click', () => {
             playNextInOrder();
@@ -2502,7 +2496,7 @@
         if (!localStorage.getItem('swipeHintShown')) {
             setTimeout(() => {
                 showToast('Swipe tracks right to queue');
-                localStorage.getItem('swipeHintShown') || localStorage.setItem('swipeHintShown', '1');
+                localStorage.setItem('swipeHintShown', '1');
             }, 2500);
         }
 
@@ -2528,7 +2522,7 @@
         (function setupMediaSessionHandlers() {
             if (!('mediaSession' in navigator)) return;
             const h = [
-                ['play', () => { widget.play(); navigator.mediaSession.playbackState = 'playing'; }],
+                ['play', () => { toggleOrStart(); navigator.mediaSession.playbackState = 'playing'; }],
                 ['pause', () => { widget.pause(); navigator.mediaSession.playbackState = 'paused'; }],
                 ['previoustrack', () => playPrevInOrder()],
                 ['nexttrack', () => playNextInOrder()],
