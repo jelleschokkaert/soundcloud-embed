@@ -23,8 +23,6 @@
             --bg-elevated: #1a1a1e;
             --accent: #8B5CF6;
             --accent-dim: rgba(139, 92, 246, 0.15);
-            --accent-glow: rgba(139, 92, 246, 0.4);
-            --accent-bright: #A78BFA;
             --text: #fafafa;
             --text-dim: #9ca3af;
             --text-muted: #6b7280;
@@ -354,6 +352,11 @@
             border-radius: 2px;
             width: 0%;
             position: relative;
+            transition: width 0.3s linear;
+        }
+
+        .fullscreen-player.seeking .fs-progress-fill {
+            transition: none;
         }
 
         .fs-progress-fill::after {
@@ -1479,6 +1482,7 @@
         let swipeOccurred = false;
         let queueCollapsed = true;
         let browserShuffledIndices = null;
+        let trackInfoDirty = true;
 
         // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
@@ -1604,6 +1608,12 @@
             </div>`;
         }
 
+        let _renderTracksRAF = 0;
+        function scheduleRenderTracks() {
+            if (_renderTracksRAF) return;
+            _renderTracksRAF = requestAnimationFrame(() => { _renderTracksRAF = 0; renderTracks(); });
+        }
+
         function renderTracks() {
             const count = trackCount || tracks.length;
             if (count === 0) {
@@ -1636,12 +1646,15 @@
                         ? '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>'
                         : '<path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>';
                 }
-                const titleEl = item.querySelector('.track-title');
-                if (titleEl) titleEl.textContent = getTrackTitle(idx);
-                const durEl = item.querySelector('.track-duration');
-                const dur = getTrackDuration(idx);
-                if (durEl) durEl.textContent = dur > 0 ? formatTime(dur) : '';
+                if (trackInfoDirty) {
+                    const titleEl = item.querySelector('.track-title');
+                    if (titleEl) titleEl.textContent = getTrackTitle(idx);
+                    const durEl = item.querySelector('.track-duration');
+                    const dur = getTrackDuration(idx);
+                    if (durEl) durEl.textContent = dur > 0 ? formatTime(dur) : '';
+                }
             }
+            trackInfoDirty = false;
         }
 
         // ========== EVENT DELEGATION ==========
@@ -1777,27 +1790,7 @@
         }
 
         // Queue event delegation (tap to play, X to remove)
-        queueList.addEventListener('click', (e) => {
-            if (e.target.closest('.queue-drag-handle')) return; // ignore drag handle taps
-            const removeBtn = e.target.closest('.queue-remove');
-            if (removeBtn) {
-                e.stopPropagation();
-                queue.splice(parseInt(removeBtn.dataset.queuePos), 1);
-                renderQueue(); renderTracks();
-                return;
-            }
-            const item = e.target.closest('.queue-item');
-            if (item) {
-                const trackIdx = parseInt(item.dataset.index);
-                const queuePos = parseInt(item.dataset.queuePos);
-                queue.splice(queuePos, 1);
-                renderQueue(); renderTracks();
-                playTrack(trackIdx);
-            }
-        });
-
-        // fsQueueList click handler (same logic as queueList)
-        fsQueueList.addEventListener('click', (e) => {
+        function handleQueueClick(e) {
             if (e.target.closest('.queue-drag-handle')) return;
             const removeBtn = e.target.closest('.queue-remove');
             if (removeBtn) {
@@ -1814,7 +1807,9 @@
                 renderQueue(); renderTracks();
                 playTrack(trackIdx);
             }
-        });
+        }
+        queueList.addEventListener('click', handleQueueClick);
+        fsQueueList.addEventListener('click', handleQueueClick);
 
         // fsTrackBrowserList click handler (add to queue)
         fsTrackBrowserList.addEventListener('click', (e) => {
@@ -1948,7 +1943,7 @@
             if (queue.length > 0) {
                 const n = queue.shift();
                 renderQueue();
-                renderTracks();
+                scheduleRenderTracks();
                 playTrack(n);
             } else {
                 const nextIndex = playOrderIndex + 1;
@@ -1989,7 +1984,7 @@
                         <span class="browser-track-num">${displayIndex + 1}</span>
                         <div class="browser-track-info">
                             <div class="browser-track-title">${title}</div>
-                            ${dur ? `<div class="browser-track-duration">${dur}</div>` : ''}
+                            ${dur ? `<div class="browser-track-duration">${formatTime(dur)}</div>` : ''}
                         </div>
                         <div class="browser-add-icon">
                             ${isInQueue
@@ -2044,11 +2039,12 @@
                     trackCache[currentIndex] = trackCache[currentIndex] || {};
                     trackCache[currentIndex].title = sound.title || `Track ${currentIndex + 1}`;
                     trackCache[currentIndex].duration = sound.duration || trackCache[currentIndex].duration || 0;
+                    trackInfoDirty = true;
                     const title = sound.title || `Track ${currentIndex + 1}`;
                     currentTrackNameEl.textContent = title;
                     miniTrackName.textContent = title;
                     if (fsOpen) fsTrackName.textContent = title;
-                    renderTracks(); renderQueue();
+                    scheduleRenderTracks(); renderQueue();
                 }
             });
             widget.getDuration(function(d) {
@@ -2071,15 +2067,17 @@
             duration = getTrackDuration(index);
             if (fsOpen) syncFullscreenState();
             fetchCurrentTrackInfo();
-            renderTracks();
+            scheduleRenderTracks();
             if (fsOpen) renderTrackBrowser();
-            // Scroll active track into view if off-screen
-            const activeWrapper = trackListEl.querySelector(`.track-item-wrapper[data-index="${index}"]`);
-            if (activeWrapper) {
-                const rect = activeWrapper.getBoundingClientRect();
-                const viewH = window.innerHeight;
-                if (rect.top < 0 || rect.bottom > viewH - 80) {
-                    activeWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Scroll active track into view if off-screen (skip when fullscreen is open)
+            if (!fsOpen) {
+                const activeWrapper = trackListEl.querySelector(`.track-item-wrapper[data-index="${index}"]`);
+                if (activeWrapper) {
+                    const rect = activeWrapper.getBoundingClientRect();
+                    const viewH = window.innerHeight;
+                    if (rect.top < 0 || rect.bottom > viewH - 80) {
+                        activeWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
             }
         }
