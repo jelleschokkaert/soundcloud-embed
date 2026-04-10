@@ -184,6 +184,7 @@
             transform: scaleX(0);
             transform-origin: left center;
             will-change: transform;
+            transition: transform 0.3s linear;
         }
 
         body.seeking .bar-progress-fill,
@@ -1041,6 +1042,7 @@
             transform: scaleX(0);
             transform-origin: left center;
             will-change: transform;
+            transition: transform 0.3s linear;
         }
 
         .mini-expand {
@@ -1521,10 +1523,10 @@
         const swipeToast = document.getElementById('swipeToast');
 
         // ========== HELPERS ==========
+        const _escDiv = document.createElement('div');
         function escapeHTML(str) {
-            const d = document.createElement('div');
-            d.textContent = str;
-            return d.innerHTML;
+            _escDiv.textContent = str;
+            return _escDiv.innerHTML;
         }
 
         function formatTime(ms) {
@@ -1572,11 +1574,13 @@
         }
 
         // ========== TRACK LIST (targeted DOM updates) ==========
-        function buildTrackItemHTML(i) {
+        function getQueueSet() { return new Set(queue); }
+
+        function buildTrackItemHTML(i, qs) {
             const title = escapeHTML(getTrackTitle(i));
             const dur = getTrackDuration(i);
             const isCurrent = i === currentIndex;
-            const isInQueue = queue.includes(i);
+            const isInQueue = qs.has(i);
             return `<div class="track-item-wrapper" data-index="${i}">
                 <div class="track-item-action queue-action"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Queue</div>
                 <div class="track-item-action remove-action"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Remove</div>
@@ -1607,9 +1611,10 @@
                 trackListInitialized = false;
                 return;
             }
+            const qs = getQueueSet();
             if (!trackListInitialized) {
                 let html = '';
-                for (let i = 0; i < count; i++) html += buildTrackItemHTML(i);
+                for (let i = 0; i < count; i++) html += buildTrackItemHTML(i, qs);
                 trackListEl.innerHTML = html;
                 trackListInitialized = true;
                 return;
@@ -1621,7 +1626,7 @@
                 if (!item) continue;
                 const idx = parseInt(item.dataset.index);
                 const isCurrent = idx === currentIndex;
-                const isInQueue = queue.includes(idx);
+                const isInQueue = qs.has(idx);
                 item.classList.toggle('playing', isCurrent);
                 item.classList.toggle('in-queue', isInQueue);
                 const btn = item.querySelector('.add-to-queue');
@@ -1828,191 +1833,82 @@
         });
 
         // ========== QUEUE DRAG-TO-REORDER ==========
-        let dragItem = null, dragStartY = 0, dragIndex = -1, dragActive = false;
-        let dragItemRects = [];
+        function initDragReorder(container) {
+            let dragItem = null, dragStartY = 0, dragIndex = -1, dragActive = false;
+            let dragItemRects = [];
 
-        function dragCleanup() {
-            if (!dragItem) return;
-            const items = Array.from(queueList.querySelectorAll('.queue-item'));
-            items.forEach(el => {
-                el.classList.remove('dragging', 'drag-shift-down', 'drag-shift-up');
-                el.style.transform = '';
-            });
-            queueList.style.userSelect = '';
-            dragItem = null;
-            dragIndex = -1;
-            dragActive = false;
+            function cleanup() {
+                if (!dragItem) return;
+                Array.from(container.querySelectorAll('.queue-item')).forEach(el => {
+                    el.classList.remove('dragging', 'drag-shift-down', 'drag-shift-up');
+                    el.style.transform = '';
+                });
+                container.style.userSelect = '';
+                dragItem = null;
+                dragIndex = -1;
+                dragActive = false;
+            }
+
+            container.addEventListener('touchstart', (e) => {
+                const handle = e.target.closest('.queue-drag-handle');
+                if (!handle) return;
+                const item = handle.closest('.queue-item');
+                if (!item) return;
+                dragIndex = parseInt(item.dataset.queuePos);
+                dragItem = item;
+                dragStartY = e.touches[0].clientY;
+                dragActive = false;
+                dragItemRects = Array.from(container.querySelectorAll('.queue-item')).map(el => {
+                    const r = el.getBoundingClientRect();
+                    return { el, top: r.top, mid: r.top + r.height / 2, pos: parseInt(el.dataset.queuePos) };
+                });
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!dragItem) return;
+                const y = e.touches[0].clientY;
+                const dy = y - dragStartY;
+                if (!dragActive) {
+                    if (Math.abs(dy) < 6) return;
+                    dragActive = true;
+                    dragItem.classList.add('dragging');
+                    if ('vibrate' in navigator) navigator.vibrate(12);
+                    container.style.userSelect = 'none';
+                }
+                dragItem.style.transform = `translateY(${dy}px) scale(1.02)`;
+                dragItemRects.forEach(r => {
+                    if (r.pos === dragIndex) return;
+                    r.el.classList.remove('drag-shift-down', 'drag-shift-up');
+                    if (dy > 0 && r.pos > dragIndex && y > r.mid) r.el.classList.add('drag-shift-up');
+                    if (dy < 0 && r.pos < dragIndex && y < r.mid) r.el.classList.add('drag-shift-down');
+                });
+            }, { passive: true });
+
+            container.addEventListener('touchend', () => {
+                if (!dragItem || !dragActive) { cleanup(); return; }
+                let targetIndex = dragIndex;
+                const shifted = dragItemRects.filter(r =>
+                    r.el.classList.contains('drag-shift-up') || r.el.classList.contains('drag-shift-down')
+                );
+                if (shifted.length > 0) {
+                    targetIndex = shifted[0].el.classList.contains('drag-shift-up')
+                        ? Math.max(...shifted.map(r => r.pos))
+                        : Math.min(...shifted.map(r => r.pos));
+                }
+                if (targetIndex !== dragIndex && targetIndex >= 0 && targetIndex < queue.length) {
+                    const [moved] = queue.splice(dragIndex, 1);
+                    queue.splice(targetIndex, 0, moved);
+                    if ('vibrate' in navigator) navigator.vibrate(8);
+                }
+                cleanup();
+                renderQueue();
+            }, { passive: true });
+
+            container.addEventListener('touchcancel', () => { cleanup(); });
         }
 
-        queueList.addEventListener('touchstart', (e) => {
-            const handle = e.target.closest('.queue-drag-handle');
-            if (!handle) return;
-            const item = handle.closest('.queue-item');
-            if (!item) return;
-
-            dragIndex = parseInt(item.dataset.queuePos);
-            dragItem = item;
-            dragStartY = e.touches[0].clientY;
-            dragActive = false;
-
-            // Cache all item positions at start
-            dragItemRects = Array.from(queueList.querySelectorAll('.queue-item')).map(el => {
-                const r = el.getBoundingClientRect();
-                return { el, top: r.top, mid: r.top + r.height / 2, pos: parseInt(el.dataset.queuePos) };
-            });
-        }, { passive: true });
-
-        queueList.addEventListener('touchmove', (e) => {
-            if (!dragItem) return;
-            const y = e.touches[0].clientY;
-            const dy = y - dragStartY;
-
-            if (!dragActive) {
-                if (Math.abs(dy) < 6) return;
-                dragActive = true;
-                dragItem.classList.add('dragging');
-                if ('vibrate' in navigator) navigator.vibrate(12);
-                queueList.style.userSelect = 'none';
-            }
-
-            // Move dragged item with finger
-            dragItem.style.transform = `translateY(${dy}px) scale(1.02)`;
-
-            // Shift other items out of the way
-            dragItemRects.forEach(r => {
-                if (r.pos === dragIndex) return;
-                r.el.classList.remove('drag-shift-down', 'drag-shift-up');
-                // If dragging down past an item, shift it up
-                if (dy > 0 && r.pos > dragIndex && y > r.mid) {
-                    r.el.classList.add('drag-shift-up');
-                }
-                // If dragging up past an item, shift it down
-                if (dy < 0 && r.pos < dragIndex && y < r.mid) {
-                    r.el.classList.add('drag-shift-down');
-                }
-            });
-        }, { passive: true });
-
-        queueList.addEventListener('touchend', () => {
-            if (!dragItem || !dragActive) { dragCleanup(); return; }
-
-            // Calculate target position from shifted items
-            let targetIndex = dragIndex;
-            const shifted = dragItemRects.filter(r =>
-                r.el.classList.contains('drag-shift-up') || r.el.classList.contains('drag-shift-down')
-            );
-
-            if (shifted.length > 0) {
-                if (shifted[0].el.classList.contains('drag-shift-up')) {
-                    // Dragged down: target = highest shifted-up item's position
-                    targetIndex = Math.max(...shifted.map(r => r.pos));
-                } else {
-                    // Dragged up: target = lowest shifted-down item's position
-                    targetIndex = Math.min(...shifted.map(r => r.pos));
-                }
-            }
-
-            // Reorder queue array
-            if (targetIndex !== dragIndex && targetIndex >= 0 && targetIndex < queue.length) {
-                const [moved] = queue.splice(dragIndex, 1);
-                queue.splice(targetIndex, 0, moved);
-                if ('vibrate' in navigator) navigator.vibrate(8);
-            }
-
-            dragCleanup();
-            renderQueue();
-        }, { passive: true });
-
-        queueList.addEventListener('touchcancel', () => { dragCleanup(); });
-
-        // Drag-to-reorder for fsQueueList (same logic, different container)
-        let fsDragItem = null, fsDragStartY = 0, fsDragIndex = -1, fsDragActive = false;
-        let fsDragItemRects = [];
-
-        function fsDragCleanup() {
-            if (!fsDragItem) return;
-            const items = Array.from(fsQueueList.querySelectorAll('.queue-item'));
-            items.forEach(el => {
-                el.classList.remove('dragging', 'drag-shift-down', 'drag-shift-up');
-                el.style.transform = '';
-            });
-            fsQueueList.style.userSelect = '';
-            fsDragItem = null;
-            fsDragIndex = -1;
-            fsDragActive = false;
-        }
-
-        fsQueueList.addEventListener('touchstart', (e) => {
-            const handle = e.target.closest('.queue-drag-handle');
-            if (!handle) return;
-            const item = handle.closest('.queue-item');
-            if (!item) return;
-
-            fsDragIndex = parseInt(item.dataset.queuePos);
-            fsDragItem = item;
-            fsDragStartY = e.touches[0].clientY;
-            fsDragActive = false;
-
-            fsDragItemRects = Array.from(fsQueueList.querySelectorAll('.queue-item')).map(el => {
-                const r = el.getBoundingClientRect();
-                return { el, top: r.top, mid: r.top + r.height / 2, pos: parseInt(el.dataset.queuePos) };
-            });
-        }, { passive: true });
-
-        fsQueueList.addEventListener('touchmove', (e) => {
-            if (!fsDragItem) return;
-            const y = e.touches[0].clientY;
-            const dy = y - fsDragStartY;
-
-            if (!fsDragActive) {
-                if (Math.abs(dy) < 6) return;
-                fsDragActive = true;
-                fsDragItem.classList.add('dragging');
-                if ('vibrate' in navigator) navigator.vibrate(12);
-                fsQueueList.style.userSelect = 'none';
-            }
-
-            fsDragItem.style.transform = `translateY(${dy}px) scale(1.02)`;
-
-            fsDragItemRects.forEach(r => {
-                if (r.pos === fsDragIndex) return;
-                r.el.classList.remove('drag-shift-down', 'drag-shift-up');
-                if (dy > 0 && r.pos > fsDragIndex && y > r.mid) {
-                    r.el.classList.add('drag-shift-up');
-                }
-                if (dy < 0 && r.pos < fsDragIndex && y < r.mid) {
-                    r.el.classList.add('drag-shift-down');
-                }
-            });
-        }, { passive: true });
-
-        fsQueueList.addEventListener('touchend', () => {
-            if (!fsDragItem || !fsDragActive) { fsDragCleanup(); return; }
-
-            let targetIndex = fsDragIndex;
-            const shifted = fsDragItemRects.filter(r =>
-                r.el.classList.contains('drag-shift-up') || r.el.classList.contains('drag-shift-down')
-            );
-
-            if (shifted.length > 0) {
-                if (shifted[0].el.classList.contains('drag-shift-up')) {
-                    targetIndex = Math.max(...shifted.map(r => r.pos));
-                } else {
-                    targetIndex = Math.min(...shifted.map(r => r.pos));
-                }
-            }
-
-            if (targetIndex !== fsDragIndex && targetIndex >= 0 && targetIndex < queue.length) {
-                const [moved] = queue.splice(fsDragIndex, 1);
-                queue.splice(targetIndex, 0, moved);
-                if ('vibrate' in navigator) navigator.vibrate(8);
-            }
-
-            fsDragCleanup();
-            renderQueue();
-        }, { passive: true });
-
-        fsQueueList.addEventListener('touchcancel', () => { fsDragCleanup(); });
+        initDragReorder(queueList);
+        initDragReorder(fsQueueList);
 
         function toggleQueue(index) {
             const pos = queue.indexOf(index);
@@ -2083,8 +1979,9 @@
             }
             const indices = browserShuffledIndices;
             
+            const qs = getQueueSet();
             fsTrackBrowserList.innerHTML = indices.map((originalIndex, displayIndex) => {
-                const isInQueue = queue.includes(originalIndex);
+                const isInQueue = qs.has(originalIndex);
                 const title = escapeHTML(getTrackTitle(originalIndex));
                 const dur = getTrackDuration(originalIndex);
                 return `
@@ -2106,10 +2003,11 @@
 
         function updateTrackBrowserQueueState() {
             if (!fsTrackBrowserList) return;
+            const qs = getQueueSet();
             const items = fsTrackBrowserList.querySelectorAll('.track-browser-item');
             items.forEach(item => {
                 const idx = parseInt(item.dataset.index);
-                const isInQueue = queue.includes(idx);
+                const isInQueue = qs.has(idx);
                 item.classList.toggle('in-queue', isInQueue);
                 const icon = item.querySelector('.browser-add-icon');
                 if (icon) {
@@ -2403,7 +2301,9 @@
                 seeking = false; document.body.classList.remove('seeking');
                 if (barEl === fsProgressBar) fullscreenPlayer.classList.remove('seeking');
                 document.removeEventListener('touchmove', onTouchMove);
+                document.removeEventListener('mousemove', onMouseMove);
                 document.removeEventListener('touchend', endSeek);
+                document.removeEventListener('mouseup', endSeek);
                 document.removeEventListener('touchcancel', cancelSeek);
             }
             barEl.addEventListener('touchstart', (e) => {
@@ -2481,6 +2381,7 @@
             });
             widget.getCurrentSoundIndex(function(index) { if (index >= 0) updateCurrentTrack(index); });
             setInterval(() => {
+                if (!isPlaying) return;
                 widget.getCurrentSoundIndex(function(index) { if (index !== currentIndex && index >= 0) updateCurrentTrack(index); });
             }, 500);
         });
