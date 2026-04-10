@@ -847,6 +847,19 @@
             background: var(--danger);
         }
 
+        .track-item-wrapper.threshold-reached .track-item-action {
+            opacity: 1;
+            font-size: 0.75rem;
+        }
+
+        .track-item-wrapper.threshold-reached .queue-action {
+            background: #7C3AED;
+        }
+
+        .track-item-wrapper.threshold-reached .remove-action {
+            background: #dc2626;
+        }
+
         .track-item {
             display: flex;
             align-items: center;
@@ -1698,12 +1711,19 @@
             // Vertical = let browser handle scroll, bail out
             if (swipeDirection === 'v') { swipeItem = null; swipeWrapper = null; return; }
 
+            // Prevent scroll during horizontal swipe
+            e.preventDefault();
+
             // Horizontal swipe
             swipeWrapper.classList.add('swiping');
+            const wasBelow = !swipeWrapper.classList.contains('threshold-reached');
+            const isAbove = Math.abs(dx) >= SWIPE_THRESHOLD;
+            swipeWrapper.classList.toggle('threshold-reached', isAbove);
+            if (wasBelow && isAbove && 'vibrate' in navigator) navigator.vibrate(8);
             const clamped = Math.max(-80, Math.min(80, dx));
             swipeItem.style.transform = `translateX(${clamped}px)`;
             swipeItem.style.transition = 'none';
-        }, { passive: true });
+        }, { passive: false });
 
         trackListEl.addEventListener('touchend', (e) => {
             if (!swipeItem || swipeDirection !== 'h') {
@@ -1715,14 +1735,12 @@
 
             swipeItem.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)';
             swipeItem.style.transform = '';
-            if (swipeWrapper) swipeWrapper.classList.remove('swiping');
+            if (swipeWrapper) swipeWrapper.classList.remove('swiping', 'threshold-reached');
 
             if (Math.abs(dx) > 10) {
                 swipeOccurred = true;
                 setTimeout(() => { swipeOccurred = false; }, 300);
             }
-
-            if (Math.abs(dx) >= SWIPE_THRESHOLD && 'vibrate' in navigator) navigator.vibrate(10);
 
             if (dx > SWIPE_THRESHOLD) {
                 if (!queue.includes(idx)) {
@@ -1742,6 +1760,15 @@
                     showToast('Not in queue');
                 }
             }
+            swipeItem = null; swipeWrapper = null; swipeDirection = null;
+        }, { passive: true });
+
+        trackListEl.addEventListener('touchcancel', () => {
+            if (swipeItem) {
+                swipeItem.style.transition = 'transform 0.2s ease';
+                swipeItem.style.transform = '';
+            }
+            if (swipeWrapper) swipeWrapper.classList.remove('swiping', 'threshold-reached');
             swipeItem = null; swipeWrapper = null; swipeDirection = null;
         }, { passive: true });
 
@@ -2258,10 +2285,15 @@
 
         // Swipe-up to open fullscreen
         function addSwipeUpToOpen(el) {
-            let startY = 0;
-            el.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; }, { passive: true });
+            let startX = 0, startY = 0;
+            el.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            }, { passive: true });
             el.addEventListener('touchend', (e) => {
-                if (e.changedTouches[0].clientY - startY < -50 && !fsOpen) openFullscreen();
+                const dx = e.changedTouches[0].clientX - startX;
+                const dy = e.changedTouches[0].clientY - startY;
+                if (dy < -50 && Math.abs(dy) > Math.abs(dx) * 1.5 && !fsOpen) openFullscreen();
             }, { passive: true });
         }
         addSwipeUpToOpen(nowPlayingBar);
@@ -2270,6 +2302,7 @@
         // ========== SEEK HANDLER FACTORY ==========
         function createSeekHandler(barEl, fillEl, useWidth) {
             let seeking = false, lastPercent = 0;
+            let touchStartX = 0, touchStartTime = 0, dragged = false;
             function getPercent(e) {
                 const rect = barEl.getBoundingClientRect();
                 const t = (e.touches && e.touches.length > 0) ? e.touches[0]
@@ -2281,43 +2314,68 @@
                 if (useWidth) fillEl.style.width = (p * 100) + '%';
                 else fillEl.style.transform = 'scaleX(' + p + ')';
             }
-            function onTouchMove(e) { lastPercent = getPercent(e); updateFill(lastPercent); }
-            function onMouseMove(e) { lastPercent = getPercent(e); updateFill(lastPercent); }
-            function endSeek() {
-                seeking = false; document.body.classList.remove('seeking');
-                if (barEl === fsProgressBar) fullscreenPlayer.classList.remove('seeking');
+            function startSeekVisual() {
+                if (seeking) return;
+                seeking = true;
+                document.body.classList.add('seeking');
+                if (barEl === fsProgressBar) fullscreenPlayer.classList.add('seeking');
+            }
+            function commitSeek() {
                 if (duration > 0) widget.seekTo(lastPercent * duration);
                 if (barEl === fsProgressBar) fsTimeNow.textContent = formatTime(lastPercent * duration);
                 syncAllProgressBars(lastPercent * 100);
-                document.removeEventListener('touchmove', onTouchMove);
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('touchend', endSeek);
-                document.removeEventListener('mouseup', endSeek);
-                document.removeEventListener('touchcancel', cancelSeek);
             }
-            function cancelSeek() {
-                seeking = false; document.body.classList.remove('seeking');
+            function cleanupTouch() {
+                seeking = false; dragged = false;
+                document.body.classList.remove('seeking');
                 if (barEl === fsProgressBar) fullscreenPlayer.classList.remove('seeking');
                 document.removeEventListener('touchmove', onTouchMove);
                 document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('touchend', endSeek);
-                document.removeEventListener('mouseup', endSeek);
+                document.removeEventListener('touchend', endTouch);
+                document.removeEventListener('mouseup', endMouse);
                 document.removeEventListener('touchcancel', cancelSeek);
             }
+            function onTouchMove(e) {
+                const t = e.touches[0];
+                if (!dragged && Math.abs(t.clientX - touchStartX) > 3) {
+                    dragged = true;
+                    startSeekVisual();
+                }
+                if (dragged) { lastPercent = getPercent(e); updateFill(lastPercent); }
+            }
+            function onMouseMove(e) { lastPercent = getPercent(e); updateFill(lastPercent); }
+            function endTouch(e) {
+                if (dragged) {
+                    commitSeek();
+                } else if (Date.now() - touchStartTime > 150) {
+                    lastPercent = getPercent(e);
+                    updateFill(lastPercent);
+                    commitSeek();
+                }
+                cleanupTouch();
+            }
+            function endMouse() {
+                commitSeek();
+                seeking = false; document.body.classList.remove('seeking');
+                if (barEl === fsProgressBar) fullscreenPlayer.classList.remove('seeking');
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', endMouse);
+            }
+            function cancelSeek() { cleanupTouch(); }
             barEl.addEventListener('touchstart', (e) => {
-                seeking = true; document.body.classList.add('seeking');
-                if (barEl === fsProgressBar) fullscreenPlayer.classList.add('seeking');
-                lastPercent = getPercent(e); updateFill(lastPercent);
+                touchStartX = e.touches[0].clientX;
+                touchStartTime = Date.now();
+                lastPercent = getPercent(e);
+                dragged = false;
                 document.addEventListener('touchmove', onTouchMove, { passive: false });
-                document.addEventListener('touchend', endSeek);
+                document.addEventListener('touchend', endTouch);
                 document.addEventListener('touchcancel', cancelSeek);
             }, { passive: true });
             barEl.addEventListener('mousedown', (e) => {
-                seeking = true; document.body.classList.add('seeking');
-                if (barEl === fsProgressBar) fullscreenPlayer.classList.add('seeking');
+                startSeekVisual();
                 lastPercent = getPercent(e); updateFill(lastPercent);
                 document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', endSeek);
+                document.addEventListener('mouseup', endMouse);
             });
         }
 
