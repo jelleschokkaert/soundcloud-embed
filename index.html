@@ -4,6 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0a0a0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='90' fill='%238B5CF6'/%3E%3Cpath fill='white' d='M256 80c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176S353.2 80 256 80zm80 200h-64v80c0 26.5-21.5 48-48 48s-48-21.5-48-48 21.5-48 48-48c8.7 0 16.9 2.3 24 6.4V152h88v128z'/%3E%3C/svg%3E">
     <title>Music Player</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1496,6 +1501,7 @@
         let queueCollapsed = true;
         let browserShuffledIndices = null;
         let trackInfoDirty = true;
+        let silentAudioActivated = false;
 
         // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
@@ -1680,7 +1686,7 @@
                 return;
             }
             const item = e.target.closest('.track-item');
-            if (item) playTrack(parseInt(item.dataset.index));
+            if (item) { ensureSilentAudioOnGesture(); playTrack(parseInt(item.dataset.index)); }
         });
 
         // ========== SWIPE GESTURES ==========
@@ -2050,12 +2056,21 @@
             widget.skip(index); widget.play();
         }
 
+        function activateSilentAudio() {
+            if (!silentAudio) return;
+            silentAudio.play().then(() => {
+                silentAudioActivated = true;
+            }).catch(err => {
+                console.warn('Silent audio bridge failed:', err.name, err.message);
+            });
+        }
+
         function updatePlayingState(playing) {
             isPlaying = playing;
             nowPlayingBar.classList.toggle('playing', playing);
             syncAllPlayIcons(playing);
             if (silentAudio) {
-                if (playing) silentAudio.play().catch(() => {});
+                if (playing) activateSilentAudio();
                 else silentAudio.pause();
             }
         }
@@ -2149,10 +2164,8 @@
         fsCloseBtn.addEventListener('click', closeFullscreen);
 
         fsPlayBtn.addEventListener('click', toggleOrStart);
-        fsPrevBtn.addEventListener('click', () => playPrevInOrder());
-        fsNextBtn.addEventListener('click', () => {
-            playNextInOrder();
-        });
+        fsPrevBtn.addEventListener('click', () => { ensureSilentAudioOnGesture(); playPrevInOrder(); });
+        fsNextBtn.addEventListener('click', () => { ensureSilentAudioOnGesture(); playNextInOrder(); });
         fsShuffleBtn.addEventListener('click', () => {
             isShuffled = !isShuffled;
             fsShuffleBtn.classList.toggle('shuffle-active', isShuffled);
@@ -2400,15 +2413,18 @@
         miniInfo.addEventListener('click', openFullscreen);
 
         // ========== COMPACT BAR CONTROLS ==========
+        function ensureSilentAudioOnGesture() {
+            if (!silentAudioActivated) activateSilentAudio();
+        }
+
         function toggleOrStart() {
+            ensureSilentAudioOnGesture();
             if (currentIndex === -1) { playTrack(playOrder[0]); return; }
             widget.toggle();
         }
         playBtn.addEventListener('click', toggleOrStart);
-        prevBtn.addEventListener('click', () => playPrevInOrder());
-        nextBtn.addEventListener('click', () => {
-            playNextInOrder();
-        });
+        prevBtn.addEventListener('click', () => { ensureSilentAudioOnGesture(); playPrevInOrder(); });
+        nextBtn.addEventListener('click', () => { ensureSilentAudioOnGesture(); playNextInOrder(); });
 
         // ========== WIDGET EVENTS ==========
         widget.bind(SC.Widget.Events.READY, function() {
@@ -2439,7 +2455,38 @@
             setInterval(() => {
                 if (!isPlaying) return;
                 widget.getCurrentSoundIndex(function(index) { if (index !== currentIndex && index >= 0) updateCurrentTrack(index); });
+                // FINISH event fallback: detect track end if FINISH was missed (background)
+                widget.getPosition(function(pos) {
+                    if (duration > 0 && pos >= duration - 500) {
+                        playNextInOrder();
+                    }
+                });
             }, 500);
+        });
+
+        // ========== PAGE LIFECYCLE ==========
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible') return;
+            // Resync all state with widget when returning to foreground
+            widget.isPaused(function(paused) {
+                if (paused === isPlaying) updatePlayingState(!paused);
+            });
+            widget.getCurrentSoundIndex(function(index) {
+                if (index >= 0 && index !== currentIndex) updateCurrentTrack(index);
+            });
+            widget.getPosition(function(pos) {
+                if (duration > 0) {
+                    syncAllProgressBars((pos / duration) * 100);
+                    if (fsOpen) fsTimeNow.textContent = formatTime(pos);
+                }
+            });
+            widget.getDuration(function(d) {
+                if (d && d > 0) duration = d;
+            });
+            // Re-activate silent audio bridge if it was interrupted
+            if (silentAudioActivated && isPlaying) activateSilentAudio();
+            // Sync MediaSession with current state
+            if (isPlaying) { updateMediaSession(); updatePositionState(); }
         });
 
         // Loading error timeout
@@ -2505,6 +2552,11 @@
         };
 
         setInterval(() => { if (isPlaying && duration > 0) updatePositionState(); }, 1000);
+
+        // ========== SERVICE WORKER ==========
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
     </script>
 </body>
 
