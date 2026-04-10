@@ -296,8 +296,11 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 2.5rem;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
         }
 
         .fs-artwork {
@@ -461,7 +464,7 @@
 
         /* ========== QUEUE IN FULLSCREEN OVERLAY ========== */
         .fs-queue {
-            flex-shrink: 0;
+            flex-shrink: 1;
             max-height: 45vh;
             overflow-y: auto;
             overscroll-behavior: contain;
@@ -510,9 +513,9 @@
 
         /* ========== TRACK BROWSER ========== */
         .fs-track-browser {
-            flex-shrink: 0;
+            flex-shrink: 1;
             max-height: 30vh;
-            overflow: hidden;
+            overflow: auto;
             display: flex;
             flex-direction: column;
         }
@@ -894,6 +897,24 @@
             color: var(--text-dim);
             text-align: center;
             flex-shrink: 0;
+            position: relative;
+        }
+
+        .track-item.loading .track-number span {
+            visibility: hidden;
+        }
+
+        .track-item.loading .track-number::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
         }
 
         .track-item.playing .track-number span {
@@ -1484,6 +1505,7 @@
         let trackListInitialized = false;
         let swipeOccurred = false;
         let queueCollapsed = true;
+        let browserShuffledIndices = null;
 
         // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
@@ -1763,11 +1785,14 @@
                 return;
             }
 
-            // Show when items are added
+            // Show when items are added; only auto-expand on first item
+            const wasHidden = queueSection.classList.contains('hidden');
             queueSection.classList.remove('hidden');
-            queueSection.classList.remove('collapsed');
-            queueCollapsed = false;
             fsQueueSection.classList.remove('hidden');
+            if (wasHidden) {
+                queueSection.classList.remove('collapsed');
+                queueCollapsed = false;
+            }
 
             // Update both list containers with same content
             queueList.innerHTML = queueHtml;
@@ -1787,7 +1812,11 @@
             }
             const item = e.target.closest('.queue-item');
             if (item) {
-                playTrack(parseInt(item.dataset.index));
+                const trackIdx = parseInt(item.dataset.index);
+                const queuePos = parseInt(item.dataset.queuePos);
+                queue.splice(queuePos, 1);
+                renderQueue(); renderTracks();
+                playTrack(trackIdx);
             }
         });
 
@@ -1803,7 +1832,11 @@
             }
             const item = e.target.closest('.queue-item');
             if (item) {
-                playTrack(parseInt(item.dataset.index));
+                const trackIdx = parseInt(item.dataset.index);
+                const queuePos = parseInt(item.dataset.queuePos);
+                queue.splice(queuePos, 1);
+                renderQueue(); renderTracks();
+                playTrack(trackIdx);
             }
         });
 
@@ -2042,6 +2075,7 @@
 
         // Centrale functie om het volgende nummer in de volgorde te spelen
         function playNextInOrder() {
+            if (currentIndex === -1) { playTrack(playOrder[0]); return; }
             if (queue.length > 0) {
                 const n = queue.shift();
                 renderQueue();
@@ -2055,6 +2089,7 @@
         }
 
         function playPrevInOrder() {
+            if (currentIndex === -1) { playTrack(playOrder[0]); return; }
             const prevIndex = playOrderIndex - 1;
             const actualIndex = prevIndex < 0 ? playOrder.length - 1 : prevIndex;
             playTrack(playOrder[actualIndex]);
@@ -2065,8 +2100,15 @@
             
             trackBrowserCount.textContent = trackCount + ' tracks';
             
-            // Create shuffled indices array (always random on each call)
-            const indices = Array.from({ length: trackCount }, (_, i) => i).sort(() => Math.random() - 0.5);
+            // Use cached shuffle order; only regenerate when needed
+            if (!browserShuffledIndices || browserShuffledIndices.length !== trackCount) {
+                browserShuffledIndices = Array.from({ length: trackCount }, (_, i) => i);
+                for (let k = browserShuffledIndices.length - 1; k > 0; k--) {
+                    const j = Math.floor(Math.random() * (k + 1));
+                    [browserShuffledIndices[k], browserShuffledIndices[j]] = [browserShuffledIndices[j], browserShuffledIndices[k]];
+                }
+            }
+            const indices = browserShuffledIndices;
             
             fsTrackBrowserList.innerHTML = indices.map((originalIndex) => {
                 const isInQueue = queue.includes(originalIndex);
@@ -2093,6 +2135,10 @@
         // ========== PLAYBACK ==========
         function playTrack(index) {
             if (index === currentIndex) { widget.toggle(); return; }
+            // Loading feedback
+            trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
+            const targetItem = trackListEl.querySelector(`.track-item[data-index="${index}"]`);
+            if (targetItem) targetItem.classList.add('loading');
             widget.skip(index); widget.play();
         }
 
@@ -2198,6 +2244,7 @@
             isShuffled = !isShuffled;
             fsShuffleBtn.classList.toggle('shuffle-active', isShuffled);
             generatePlayOrder();
+            browserShuffledIndices = null;
             renderTrackBrowser();
         });
 
@@ -2207,6 +2254,7 @@
         const SWIPE_CLOSE_DISTANCE = 60;
         const SWIPE_CLOSE_VELOCITY = 0.25;
         let fsTouchStartY = 0, fsTouchStartTime = 0, fsDragging = false;
+        let fsTouchScrollableEl = null;
         const PROGRESS_BAR_GUARD = 30;
 
         function isInProgressZone(y) {
@@ -2214,11 +2262,21 @@
             return y >= bar.top - PROGRESS_BAR_GUARD && y <= bar.bottom + PROGRESS_BAR_GUARD;
         }
 
+        function findScrollableParent(target) {
+            const selectors = ['.fs-queue', '.track-browser-list', '.fs-content'];
+            for (const sel of selectors) {
+                const el = target.closest(sel);
+                if (el && el.scrollHeight > el.clientHeight) return el;
+            }
+            return null;
+        }
+
         fullscreenPlayer.addEventListener('touchstart', (e) => {
             if (isInProgressZone(e.touches[0].clientY)) return;
             fsTouchStartY = e.touches[0].clientY;
             fsTouchStartTime = Date.now();
             fsDragging = false;
+            fsTouchScrollableEl = findScrollableParent(e.target);
             fullscreenPlayer.classList.remove('spring-back', 'dimming');
             fullscreenPlayer.style.transition = '';
             fullscreenPlayer.style.transform = '';
@@ -2227,6 +2285,15 @@
 
         fullscreenPlayer.addEventListener('touchmove', (e) => {
             if (fsDragging === 'canceled') return;
+
+            // Don't start drag if inside a scrollable child that hasn't reached the top
+            if (fsTouchScrollableEl && !fsDragging) {
+                if (fsTouchScrollableEl.scrollTop > 1) {
+                    fsDragging = 'canceled';
+                    return;
+                }
+            }
+
             const deltaY = e.touches[0].clientY - fsTouchStartY;
 
             if (deltaY <= 0) {
@@ -2403,7 +2470,10 @@
                 }
                 renderTracks();
             });
-            widget.bind(SC.Widget.Events.PLAY, function() { updatePlayingState(true); fetchCurrentTrackInfo(); });
+            widget.bind(SC.Widget.Events.PLAY, function() {
+                trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
+                updatePlayingState(true); fetchCurrentTrackInfo();
+            });
             widget.bind(SC.Widget.Events.PAUSE, function() { updatePlayingState(false); });
             widget.bind(SC.Widget.Events.PLAY_PROGRESS, function(e) {
                 if (duration > 0) {
