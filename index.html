@@ -1512,7 +1512,6 @@
         let browserShuffledIndices = null;
         let trackInfoDirty = true;
         let silentAudioActivated = false;
-        let _lastAutoAdvancedIndex = -1;
 
         // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
@@ -1850,7 +1849,7 @@
                 const queuePos = parseInt(item.dataset.queuePos);
                 queue.splice(queuePos, 1);
                 renderQueue(); renderTracks();
-                playTrack(trackIdx);
+                playTrack(trackIdx, true);
             }
         }
         queueList.addEventListener('click', handleQueueClick);
@@ -1984,24 +1983,24 @@
 
         // Centrale functie om het volgende nummer in de volgorde te spelen
         function playNextInOrder() {
-            if (currentIndex === -1) { if (playOrder.length > 0) playTrack(playOrder[0]); return; }
+            if (currentIndex === -1) { if (playOrder.length > 0) playTrack(playOrder[0], true); return; }
             if (queue.length > 0) {
                 const n = queue.shift();
                 renderQueue();
                 scheduleRenderTracks();
-                playTrack(n);
+                playTrack(n, true);
             } else {
                 const nextIndex = playOrderIndex + 1;
                 const actualIndex = nextIndex >= playOrder.length ? 0 : nextIndex;
-                playTrack(playOrder[actualIndex]);
+                playTrack(playOrder[actualIndex], true);
             }
         }
 
         function playPrevInOrder() {
-            if (currentIndex === -1) { if (playOrder.length > 0) playTrack(playOrder[0]); return; }
+            if (currentIndex === -1) { if (playOrder.length > 0) playTrack(playOrder[0], true); return; }
             const prevIndex = playOrderIndex - 1;
             const actualIndex = prevIndex < 0 ? playOrder.length - 1 : prevIndex;
-            playTrack(playOrder[actualIndex]);
+            playTrack(playOrder[actualIndex], true);
         }
 
         function renderTrackBrowser() {
@@ -2059,13 +2058,15 @@
         }
 
         // ========== PLAYBACK ==========
-        function playTrack(index) {
-            if (index === currentIndex) { widget.toggle(); return; }
+        function playTrack(index, forcePlay) {
+            if (index === currentIndex && !forcePlay) { widget.toggle(); return; }
+            if (index === currentIndex && forcePlay) { widget.play(); return; }
             // Loading feedback
             trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
             const targetItem = trackListEl.querySelector(`.track-item[data-index="${index}"]`);
             if (targetItem) targetItem.classList.add('loading');
-            widget.skip(index); widget.play();
+            widget.skip(index);
+            widget.play();
         }
 
         function activateSilentAudio() {
@@ -2436,7 +2437,7 @@
         function toggleOrStart() {
             ensureSilentAudioOnGesture();
             if (currentIndex === -1) {
-                if (playOrder.length > 0) playTrack(playOrder[0]);
+                if (playOrder.length > 0) playTrack(playOrder[0], true);
                 return;
             }
             widget.toggle();
@@ -2468,19 +2469,16 @@
                 }
             });
             widget.bind(SC.Widget.Events.FINISH, function() {
-                playNextInOrder();
+                // Only override widget's auto-advance if we have queue items or shuffle is on
+                // Otherwise the widget handles sequential advancement itself
+                if (queue.length > 0 || isShuffled) {
+                    playNextInOrder();
+                }
             });
             widget.getCurrentSoundIndex(function(index) { if (index >= 0) updateCurrentTrack(index); });
             setInterval(() => {
                 if (!isPlaying) return;
                 widget.getCurrentSoundIndex(function(index) { if (index !== currentIndex && index >= 0) updateCurrentTrack(index); });
-                // FINISH event fallback: detect track end if FINISH was missed (background)
-                widget.getPosition(function(pos) {
-                    if (duration > 0 && pos >= duration - 500 && currentIndex !== _lastAutoAdvancedIndex) {
-                        _lastAutoAdvancedIndex = currentIndex;
-                        playNextInOrder();
-                    }
-                });
             }, 500);
         });
 
