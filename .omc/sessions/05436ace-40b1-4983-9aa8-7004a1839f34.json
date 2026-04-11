@@ -1,0 +1,10 @@
+{
+  "session_id": "05436ace-40b1-4983-9aa8-7004a1839f34",
+  "ended_at": "2026-04-10T07:51:29.272Z",
+  "reason": "clear",
+  "agents_spawned": 0,
+  "agents_completed": 0,
+  "modes_used": [
+    "autopilot"
+  ]
+}

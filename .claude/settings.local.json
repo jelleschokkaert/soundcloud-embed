@@ -2,7 +2,25 @@
   "permissions": {
     "allow": [
       "mcp__plugin_oh-my-claudecode_t__state_write",
-      "mcp__plugin_oh-my-claudecode_t__ast_grep_search"
+      "mcp__plugin_oh-my-claudecode_t__ast_grep_search",
+      "WebSearch",
+      "WebFetch(domain:webkit.org)",
+      "WebFetch(domain:web.dev)",
+      "WebFetch(domain:developer.chrome.com)",
+      "WebFetch(domain:bugs.webkit.org)",
+      "WebFetch(domain:dbushell.com)",
+      "WebFetch(domain:blog.prototyp.digital)",
+      "WebFetch(domain:www.magicbell.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:developers.soundcloud.com)",
+      "WebFetch(domain:www.spf.io)",
+      "WebFetch(domain:caniuse.com)",
+      "WebFetch(domain:underoot.dev)",
+      "WebFetch(domain:whatpwacando.today)",
+      "WebFetch(domain:ymlogy.xyz)",
+      "WebFetch(domain:firt.dev)",
+      "WebFetch(domain:discussions.apple.com)",
+      "WebFetch(domain:medium.com)"
     ]
   }
 }
