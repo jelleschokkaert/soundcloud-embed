@@ -614,7 +614,7 @@
             border-radius: 12px;
             border: 1px solid var(--border);
             overflow: hidden;
-            transition: opacity 0.2s, max-height 0.3s ease;
+            transition: opacity 0.2s;
         }
 
         .queue-section.hidden {
@@ -1502,6 +1502,7 @@
         let browserShuffledIndices = null;
         let trackInfoDirty = true;
         let silentAudioActivated = false;
+        let _lastAutoAdvancedIndex = -1;
 
         // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
@@ -1813,6 +1814,7 @@
             fsQueueSection.classList.remove('hidden');
             if (wasHidden) {
                 queueSection.classList.remove('collapsed');
+                fsQueueSection.classList.remove('collapsed');
                 queueCollapsed = false;
             }
 
@@ -2457,7 +2459,8 @@
                 widget.getCurrentSoundIndex(function(index) { if (index !== currentIndex && index >= 0) updateCurrentTrack(index); });
                 // FINISH event fallback: detect track end if FINISH was missed (background)
                 widget.getPosition(function(pos) {
-                    if (duration > 0 && pos >= duration - 500) {
+                    if (duration > 0 && pos >= duration - 500 && currentIndex !== _lastAutoAdvancedIndex) {
+                        _lastAutoAdvancedIndex = currentIndex;
                         playNextInOrder();
                     }
                 });
