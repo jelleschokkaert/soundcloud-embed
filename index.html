@@ -1512,6 +1512,7 @@
         let browserShuffledIndices = null;
         let trackInfoDirty = true;
         let silentAudioActivated = false;
+        let _skipPending = false;
 
         // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
@@ -2065,6 +2066,17 @@
             trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
             const targetItem = trackListEl.querySelector(`.track-item[data-index="${index}"]`);
             if (targetItem) targetItem.classList.add('loading');
+            // Update state immediately to prevent polling from detecting
+            // the widget's intermediate auto-advance state
+            currentIndex = index;
+            playOrderIndex = playOrder.indexOf(index);
+            _skipPending = true;
+            const title = getTrackTitle(index);
+            currentTrackNameEl.textContent = title;
+            miniTrackName.textContent = title;
+            duration = getTrackDuration(index);
+            if (fsOpen) fsTrackName.textContent = title;
+            scheduleRenderTracks();
             widget.skip(index);
             widget.play();
         }
@@ -2457,6 +2469,7 @@
                 renderTracks();
             });
             widget.bind(SC.Widget.Events.PLAY, function() {
+                _skipPending = false;
                 trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
                 updatePlayingState(true); fetchCurrentTrackInfo();
             });
@@ -2477,7 +2490,7 @@
             });
             widget.getCurrentSoundIndex(function(index) { if (index >= 0) updateCurrentTrack(index); });
             setInterval(() => {
-                if (!isPlaying) return;
+                if (!isPlaying || _skipPending) return;
                 widget.getCurrentSoundIndex(function(index) { if (index !== currentIndex && index >= 0) updateCurrentTrack(index); });
             }, 500);
         });
