@@ -3,12 +3,12 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0a0a0b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Music">
     <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='90' fill='%238B5CF6'/%3E%3Cpath fill='white' d='M256 80c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176S353.2 80 256 80zm80 200h-64v80c0 26.5-21.5 48-48 48s-48-21.5-48-48 21.5-48 48-48c8.7 0 16.9 2.3 24 6.4V152h88v128z'/%3E%3C/svg%3E">
     <title>Music Player</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2569,7 +2569,34 @@
 
         setInterval(() => { if (isPlaying && duration > 0) updatePositionState(); }, 1000);
 
-        // ========== SERVICE WORKER ==========
+        // ========== PWA ICON + SERVICE WORKER ==========
+        (function generateTouchIcon() {
+            const c = document.createElement('canvas');
+            c.width = 180; c.height = 180;
+            const ctx = c.getContext('2d');
+            // Purple rounded rect background
+            ctx.fillStyle = '#8B5CF6';
+            ctx.beginPath();
+            ctx.roundRect(0, 0, 180, 180, 32);
+            ctx.fill();
+            // White music note
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(68, 130, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(84, 52, 8, 80);
+            ctx.fillRect(84, 48, 40, 10);
+            ctx.fillRect(116, 48, 8, 40);
+            ctx.beginPath();
+            ctx.arc(116, 88, 12, 0, Math.PI * 2);
+            ctx.fill();
+            // Set as apple-touch-icon
+            const link = document.createElement('link');
+            link.rel = 'apple-touch-icon';
+            link.href = c.toDataURL('image/png');
+            document.head.appendChild(link);
+        })();
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(() => {});
         }

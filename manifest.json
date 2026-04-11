@@ -13,7 +13,13 @@
             "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='90' fill='%238B5CF6'/%3E%3Cpath fill='white' d='M256 80c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176S353.2 80 256 80zm80 200h-64v80c0 26.5-21.5 48-48 48s-48-21.5-48-48 21.5-48 48-48c8.7 0 16.9 2.3 24 6.4V152h88v128z'/%3E%3C/svg%3E",
             "sizes": "512x512",
             "type": "image/svg+xml",
-            "purpose": "any maskable"
+            "purpose": "any"
+        },
+        {
+            "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%238B5CF6'/%3E%3Cpath fill='white' d='M256 80c-97.2 0-176 78.8-176 176s78.8 176 176 176 176-78.8 176-176S353.2 80 256 80zm80 200h-64v80c0 26.5-21.5 48-48 48s-48-21.5-48-48 21.5-48 48-48c8.7 0 16.9 2.3 24 6.4V152h88v128z'/%3E%3C/svg%3E",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
         }
     ]
 }
