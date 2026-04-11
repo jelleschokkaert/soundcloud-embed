@@ -301,10 +301,16 @@
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
-            gap: 2.5rem;
+            gap: 1.5rem;
             overflow-y: auto;
             overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
+        }
+
+        @media (min-height: 700px) {
+            .fs-content {
+                gap: 2.5rem;
+            }
         }
 
         .fs-track-info {
@@ -785,7 +791,7 @@
 
         /* ========== TRACK LIST ========== */
         .track-list-section {
-            padding: 0 1rem 2rem;
+            padding: 0.5rem 1rem 2rem;
         }
 
         .section-title {
@@ -1087,7 +1093,7 @@
         /* ========== SWIPE TOAST ========== */
         .swipe-toast {
             position: fixed;
-            bottom: 100px;
+            bottom: calc(120px + env(safe-area-inset-bottom, 0px));
             left: 50%;
             transform: translateX(-50%) translateY(20px);
             background: var(--bg-elevated);
@@ -1143,6 +1149,10 @@
         }
 
         .bottom-spacer {
+            height: 1rem;
+        }
+
+        body:has(.mini-player.visible) .bottom-spacer {
             height: calc(80px + env(safe-area-inset-bottom, 0px));
         }
     </style>
