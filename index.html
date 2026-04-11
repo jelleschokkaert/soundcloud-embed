@@ -1974,7 +1974,7 @@
 
         // Centrale functie om het volgende nummer in de volgorde te spelen
         function playNextInOrder() {
-            if (currentIndex === -1) { playTrack(playOrder[0]); return; }
+            if (currentIndex === -1) { if (playOrder.length > 0) playTrack(playOrder[0]); return; }
             if (queue.length > 0) {
                 const n = queue.shift();
                 renderQueue();
@@ -1988,7 +1988,7 @@
         }
 
         function playPrevInOrder() {
-            if (currentIndex === -1) { playTrack(playOrder[0]); return; }
+            if (currentIndex === -1) { if (playOrder.length > 0) playTrack(playOrder[0]); return; }
             const prevIndex = playOrderIndex - 1;
             const actualIndex = prevIndex < 0 ? playOrder.length - 1 : prevIndex;
             playTrack(playOrder[actualIndex]);
@@ -2078,25 +2078,29 @@
         }
 
         function fetchCurrentTrackInfo() {
+            const fetchIndex = currentIndex;
             widget.getCurrentSound(function(sound) {
-                if (sound && currentIndex >= 0) {
-                    trackCache[currentIndex] = trackCache[currentIndex] || {};
-                    trackCache[currentIndex].title = sound.title || `Track ${currentIndex + 1}`;
-                    trackCache[currentIndex].duration = sound.duration || trackCache[currentIndex].duration || 0;
+                if (sound && fetchIndex >= 0) {
+                    trackCache[fetchIndex] = trackCache[fetchIndex] || {};
+                    const title = sound.title || `Track ${fetchIndex + 1}`;
+                    trackCache[fetchIndex].title = title;
+                    trackCache[fetchIndex].duration = sound.duration || trackCache[fetchIndex].duration || 0;
                     trackInfoDirty = true;
-                    const title = sound.title || `Track ${currentIndex + 1}`;
-                    currentTrackNameEl.textContent = title;
-                    miniTrackName.textContent = title;
-                    if (fsOpen) fsTrackName.textContent = title;
+                    // Only update UI if this track is still current
+                    if (fetchIndex === currentIndex) {
+                        currentTrackNameEl.textContent = title;
+                        miniTrackName.textContent = title;
+                        if (fsOpen) fsTrackName.textContent = title;
+                    }
                     scheduleRenderTracks(); renderQueue();
                 }
             });
             widget.getDuration(function(d) {
                 if (d && d > 0) {
-                    duration = d;
-                    if (currentIndex >= 0) {
-                        trackCache[currentIndex] = trackCache[currentIndex] || {};
-                        trackCache[currentIndex].duration = d;
+                    if (fetchIndex === currentIndex) duration = d;
+                    if (fetchIndex >= 0) {
+                        trackCache[fetchIndex] = trackCache[fetchIndex] || {};
+                        trackCache[fetchIndex].duration = d;
                     }
                 }
             });
@@ -2421,7 +2425,10 @@
 
         function toggleOrStart() {
             ensureSilentAudioOnGesture();
-            if (currentIndex === -1) { playTrack(playOrder[0]); return; }
+            if (currentIndex === -1) {
+                if (playOrder.length > 0) playTrack(playOrder[0]);
+                return;
+            }
             widget.toggle();
         }
         playBtn.addEventListener('click', toggleOrStart);
