@@ -2549,8 +2549,6 @@
                 ['previoustrack', () => playPrevInOrder()],
                 ['nexttrack', () => playNextInOrder()],
                 ['seekto', (d) => { if (d.seekTime !== undefined && duration > 0) { widget.seekTo(d.seekTime * 1000); updatePositionState(); } }],
-                ['seekbackward', (d) => { widget.getPosition(p => { widget.seekTo(Math.max(0, p - (d.seekOffset || 10) * 1000)); updatePositionState(); }); }],
-                ['seekforward', (d) => { widget.getPosition(p => { widget.seekTo(Math.min(duration, p + (d.seekOffset || 10) * 1000)); updatePositionState(); }); }],
                 ['stop', () => { widget.pause(); widget.seekTo(0); navigator.mediaSession.playbackState = 'paused'; }]
             ];
             for (const [a, fn] of h) { try { navigator.mediaSession.setActionHandler(a, fn); } catch (e) {} }
