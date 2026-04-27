@@ -1363,6 +1363,7 @@
             "Always There",
             "KIDS (TRANCE EDIT)",
             "PASILDA GROOVE (HARD)",
+            "Scatman - McMillan twins remix",
             "where have you been (leon vera organ mix)",
             "Is This A Dream (leon vera mix)",
             "Leave Me Alone [SLVA004]",
@@ -1483,11 +1484,13 @@
             "Julien Moureau - Rolling in the deep",
             "Lefrix - Rhythm of the night",
             "Scream and shout - davina",
-            "Scatman - McMillan twins remix",
             "Encore une fois",
             "Marco B - Dromen zijn bedrog - VAN OLDEN",
             "London Grammar - strong (H!DE Remix)",
-            "Santigold - Disparate Youth (H!de Remix)"
+            "Santigold - Disparate Youth (H!de Remix)",
+            "Tess - Shooting Stars",
+            "We are one - Cbunsee"
+
         ];
 
         // ========== STATE ==========
@@ -1511,6 +1514,7 @@
         let trackInfoDirty = true;
         let silentAudioActivated = false;
         let _skipPending = false;
+        let _lastAdvanceTime = 0;
 
         // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
@@ -1695,7 +1699,7 @@
                 return;
             }
             const item = e.target.closest('.track-item');
-            if (item) { ensureSilentAudioOnGesture(); playTrack(parseInt(item.dataset.index)); }
+            if (item) { ensureSilentAudioOnGesture(); playTrack(parseInt(item.dataset.index), true); }
         });
 
         // ========== SWIPE GESTURES ==========
@@ -2057,9 +2061,9 @@
         }
 
         // ========== PLAYBACK ==========
-        function playTrack(index, forcePlay) {
-            if (index === currentIndex && !forcePlay) { widget.toggle(); return; }
-            if (index === currentIndex && forcePlay) { widget.play(); return; }
+        // Tapping a track always plays it — never toggles to pause. Pause is reserved for the play button.
+        function playTrack(index) {
+            if (index === currentIndex) { widget.play(); return; }
             // Loading feedback
             trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
             const targetItem = trackListEl.querySelector(`.track-item[data-index="${index}"]`);
@@ -2069,6 +2073,7 @@
             currentIndex = index;
             playOrderIndex = playOrder.indexOf(index);
             _skipPending = true;
+            _lastAdvanceTime = Date.now();
             const title = getTrackTitle(index);
             currentTrackNameEl.textContent = title;
             miniTrackName.textContent = title;
@@ -2085,6 +2090,17 @@
                 silentAudioActivated = true;
             }).catch(err => {
                 console.warn('Silent audio bridge failed:', err.name, err.message);
+            });
+        }
+
+        // Watchdog: if iOS pauses the silent bridge (audio interruption, OS throttle),
+        // resume it as long as the widget is supposed to be playing. This keeps the
+        // background JS audio session alive across interruptions.
+        if (silentAudio) {
+            silentAudio.addEventListener('pause', () => {
+                if (isPlaying && silentAudioActivated) {
+                    silentAudio.play().catch(() => {});
+                }
             });
         }
 
@@ -2440,17 +2456,22 @@
         miniInfo.addEventListener('click', openFullscreen);
 
         // ========== COMPACT BAR CONTROLS ==========
+        // Restart silent audio on every user gesture if currently paused. This is a no-op
+        // when already playing, but recovers from iOS audio session interruptions.
         function ensureSilentAudioOnGesture() {
-            if (!silentAudioActivated) activateSilentAudio();
+            if (silentAudio && silentAudio.paused) activateSilentAudio();
         }
 
         function toggleOrStart() {
             ensureSilentAudioOnGesture();
             if (currentIndex === -1) {
-                if (playOrder.length > 0) playTrack(playOrder[0], true);
+                if (playOrder.length > 0) playTrack(playOrder[0]);
                 return;
             }
-            widget.toggle();
+            // Explicit play/pause based on UI state — more deterministic than widget.toggle()
+            // when the widget has stale state (post-FINISH, after audio interruption, etc.)
+            if (isPlaying) widget.pause();
+            else widget.play();
         }
         playBtn.addEventListener('click', toggleOrStart);
         prevBtn.addEventListener('click', () => { ensureSilentAudioOnGesture(); playPrevInOrder(); });
@@ -2480,6 +2501,8 @@
                 }
             });
             widget.bind(SC.Widget.Events.FINISH, function() {
+                // Dedupe: if we just manually advanced (via polling fallback or user action), ignore.
+                if (Date.now() - _lastAdvanceTime < 1500) return;
                 // Only override widget's auto-advance if we have queue items or shuffle is on
                 // Otherwise the widget handles sequential advancement itself
                 if (queue.length > 0 || isShuffled) {
@@ -2490,6 +2513,13 @@
             setInterval(() => {
                 if (!isPlaying || _skipPending) return;
                 widget.getCurrentSoundIndex(function(index) { if (index !== currentIndex && index >= 0) updateCurrentTrack(index); });
+                // Background FINISH fallback: SC widget event may miss when iOS throttles JS.
+                // Detect end-of-track via position polling and manually advance for queue/shuffle.
+                if ((queue.length > 0 || isShuffled) && duration > 0 && Date.now() - _lastAdvanceTime > 1500) {
+                    widget.getPosition(function(pos) {
+                        if (pos > 0 && pos >= duration - 400) playNextInOrder();
+                    });
+                }
             }, 500);
         });
 
@@ -2512,8 +2542,8 @@
             widget.getDuration(function(d) {
                 if (d && d > 0) duration = d;
             });
-            // Re-activate silent audio bridge if it was interrupted
-            if (silentAudioActivated && isPlaying) activateSilentAudio();
+            // Re-activate silent audio bridge if it was interrupted while backgrounded
+            if (silentAudio && silentAudio.paused && isPlaying) activateSilentAudio();
             // Sync MediaSession with current state
             if (isPlaying) { updateMediaSession(); updatePositionState(); }
         });
@@ -2555,10 +2585,19 @@
         (function setupMediaSessionHandlers() {
             if (!('mediaSession' in navigator)) return;
             const h = [
-                ['play', () => { toggleOrStart(); navigator.mediaSession.playbackState = 'playing'; }],
+                ['play', () => {
+                    // Lockscreen play must always start playback — never toggle.
+                    if (!silentAudioActivated) activateSilentAudio();
+                    if (currentIndex === -1) {
+                        if (playOrder.length > 0) playTrack(playOrder[0]);
+                    } else {
+                        widget.play();
+                    }
+                    navigator.mediaSession.playbackState = 'playing';
+                }],
                 ['pause', () => { widget.pause(); navigator.mediaSession.playbackState = 'paused'; }],
-                ['previoustrack', () => playPrevInOrder()],
-                ['nexttrack', () => playNextInOrder()],
+                ['previoustrack', () => { if (!silentAudioActivated) activateSilentAudio(); playPrevInOrder(); }],
+                ['nexttrack', () => { if (!silentAudioActivated) activateSilentAudio(); playNextInOrder(); }],
                 ['seekto', (d) => { if (d.seekTime !== undefined && duration > 0) { widget.seekTo(d.seekTime * 1000); updatePositionState(); } }],
                 ['stop', () => { widget.pause(); widget.seekTo(0); navigator.mediaSession.playbackState = 'paused'; }]
             ];
