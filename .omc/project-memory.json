@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1775898615961,
+  "lastScanned": 1777291197600,
   "projectRoot": "C:\\Users\\jelle\\OneDrive\\Bureaublad\\Documenten\\projecten\\soundcloud-embed",
   "techStack": {
     "languages": [],
@@ -38,22 +38,22 @@
       "path": "dist",
       "purpose": "Distribution/build output",
       "fileCount": 0,
-      "lastAccessed": 1775898615832,
+      "lastAccessed": 1777291197582,
       "keyFiles": []
     },
     "src": {
       "path": "src",
       "purpose": "Source code",
       "fileCount": 0,
-      "lastAccessed": 1775898615858,
+      "lastAccessed": 1777291197583,
       "keyFiles": []
     }
   },
   "hotPaths": [
     {
       "path": "index.html",
-      "accessCount": 327,
-      "lastAccessed": 1775914495950,
+      "accessCount": 387,
+      "lastAccessed": 1777377887550,
       "type": "file"
     },
     {
