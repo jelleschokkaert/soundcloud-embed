@@ -789,6 +789,51 @@
             color: var(--danger);
         }
 
+        /* ========== PLAYLIST TABS ========== */
+        .playlist-tabs {
+            display: flex;
+            gap: 0.25rem;
+            padding: 0.25rem;
+            margin-bottom: 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            /* Tabs fill the row while they fit; once labels need more room the row
+               scrolls horizontally instead of truncating. */
+            overflow-x: auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .playlist-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .playlist-tab {
+            flex: 1 0 auto;
+            padding: 0.5rem 0.75rem;
+            border: none;
+            border-radius: 9px;
+            background: transparent;
+            color: var(--text-dim);
+            font-family: inherit;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .playlist-tab.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .playlist-tab:not(.active):active {
+            background: var(--bg-active);
+            color: var(--text);
+        }
+
         /* ========== TRACK LIST ========== */
         .track-list-section {
             padding: 0.5rem 1rem 2rem;
@@ -1244,6 +1289,7 @@
             </div>
             <div class="fs-track-browser">
                 <div class="track-browser-section">
+                    <div class="playlist-tabs" id="fsPlaylistTabs" role="tablist"></div>
                     <div class="track-browser-header">
                         <span>Add to Queue</span>
                         <span class="track-browser-count" id="trackBrowserCount">0 tracks</span>
@@ -1268,6 +1314,7 @@
 
     <!-- Track List -->
     <div class="track-list-section">
+        <div class="playlist-tabs" id="playlistTabs" role="tablist"></div>
         <div class="section-title">All Tracks</div>
         <div class="track-list" id="trackList">
             <div class="loading">
@@ -1313,7 +1360,9 @@
     <script src="https://w.soundcloud.com/player/api.js"></script>
     <script>
         // ========== TRACK NAMES ==========
-        const TRACK_NAMES = [
+        // SoundCloud's getSounds() only returns full metadata for the currently loaded
+        // sound, so titles have to be hardcoded per playlist to render a browsable list.
+        const PLAYLIST_1_TRACKS = [
             "Dancin (extended/looped)(Aaron Smith - Dancin remix)",
             "Save Your Tears (southstar remix)",
             "A New Kind Of \u{1F495} (southstar remix)",
@@ -1508,10 +1557,218 @@
             "Disparate Youth - Marlon hoffstadt",
             "Zwoele zomernachten - NORA",
             "Don't Go - Lewis Taylor",
-            "Naked in Manhattan - Morph"
-
-
+            "Naked in Manhattan - Morph",
+            "Free Your Mind (Barqiemoon & EMMRSN Edit)",
+            "The Way I Are (leon vera' international house edit)",
+            "Nova Blue, EV - Weekend Cinderella"
         ];
+
+        const PLAYLIST_2_TRACKS = [
+            "Bad Em Up - Wiley, Skepta and Frisco The Best of Risky Roadz (Wikko Remix)",
+            "Bringing It Back X Kylie Minogue",
+            "Moves Like Skepta",
+            "Gypsy Woman X Gas Me Up",
+            "Lady (Hear Me Tonight)x AJ Tracey",
+            "Freestyler X On The Radar",
+            "Piece Of Me X Verdansk",
+            "AJ Tracey X Move Your Body",
+            "Man X Toca's Miracle",
+            "HEARTBROKEN",
+            "Unknown T X Memories Of Before",
+            "SEMPA X C100 - IT AIN'T SAFE",
+            "BBK X I'll Take You There",
+            "C100 IS THAT U",
+            "BUT I DON'T SKI",
+            "Money Talks X Lady",
+            "Fred Again.. Blanco - Solo (Marlon Hoffstadt Edit)",
+            "Stormzy - WickedSkengMan (Wikko Remix)",
+            "AITCH ORGAN BANGER (KENNY ALLSTAR 1XTRA)",
+            "verdansk in the rain",
+            "Memories x PIB",
+            "Thats Not Me (DJ Q Rhythm & Gash Edit)",
+            "schooling seniors",
+            "ghetto gospel",
+            "LONDON CITY"
+        ];
+
+        const PLAYLIST_3_TRACKS = [
+            "Siedah Garrett - Do you want right now (Pietro GAIN remix) [Free DL]",
+            "Phats & Small - Turn Around (Pietro GAIN remix) [Free DL]",
+            "All Saints - Pure Shores (Pietro GAIN remix) [Free DL]",
+            "Lola's Groove - HARPERR (FREE DL)",
+            "Madonna - Into The Groove (Pablo Bozzi edit)",
+            "I Want Your Love (Baron's Disco Mix)",
+            "Relight My Fire (Baron's Hard Disco Flip)",
+            "More Spell On You (Lana Vese Edit)",
+            "Death On The Dancefloor - HARPERR (FREE DL)",
+            "Finally (Scharfesss Remix)",
+            "Everybody Wants To Rule The World (Baron's Rework)"
+        ];
+
+        const PLAYLIST_4_TRACKS = [
+            "101Barz - Studiosessie 224 - Boef",
+            "101Barz - Zomersessie 2016 - Lijpe",
+            "Rafello - Studiosessie 300 - 101Barz",
+            "KA - 101Barz",
+            "Ares - Studiosessie 254 - 101Barz",
+            "Ares - Studiosessie 292 - 101Barz",
+            "BOKOESAM 101barz",
+            "Spow Business (3robi, Aim, Cor, YassineBeats) | Studiosessie 343 | 101Barz | DEEL 1",
+            "101Barz - Wintersessies 2016 - Kosso",
+            "Nass | Studiosessie 346 | 101Barz",
+            "Momi - Studiosessie 258 - 101Barz",
+            "Philly | Studiosessie 342 | 101Barz",
+            "DODO | Zomersessie 2020 | 101Barz",
+            "101Barz - Rotterdam Airlines - Kevin & Johnny Sellah",
+            "Zieke Zuiden 101barz Wintersessie (Volledige Versie)",
+            "Winne - Feis Lijn5",
+            "101Barz - Remastered Studiosessie - Skiezo & Chillouh",
+            "Josbros - Wintersessie 2019 - 101Barz",
+            "Piraat | Zomersessie 2020 | 101Barz",
+            "Seffelinie Spitsessie CCXLI Zonamo Underground",
+            "Seffelinie Spitsessie CCLXXVIII Zonamo Underground",
+            "Pierrii zonamo",
+            "Hef Bundy - 101 Barz - Studiosessie 158 - Hef Bundy",
+            "Bokoesam Zomersessie 2020 101Barz",
+            "Kingsize, Louis & Mula Spitsessie CCXXXV Zonamo Underground",
+            "Kevin Studiosessie 307 - 101Barz",
+            "Kaascouse - Wintersessie 2019 - 101Barz",
+            "Excellent - Studiosessie 248 - 101Barz",
+            "Jantje | Studiosessie 357 | 101Barz",
+            "Appa - Wintersessie 2018 - 101Barz",
+            "101Barz - Wintersessies 2014-2015 - Seffelinie",
+            "seffelinie 101barz 2015",
+            "Josylvio - Wintersessie 2017 - 101Barz",
+            "Seffelinie - Studiosessie 249 - 101Barz",
+            "Pierrii - Studiosessie 250 - 101Barz",
+            "Beats by Esko - Sevn Alias, Josylvio, MocroManiac, Hef, Crooks & Adje - Megasessie - 101Barz",
+            "MocroManiac - Wintersessie 2018 - 101Barz",
+            "Bokke8 | Studiosessie 320 | 101Barz",
+            "Killer Kamal - 101barz - Killer Statements",
+            "Zwangere Guy - Studiosessie 305 - 101Barz",
+            "Zwangere Guy Wintersessie 2020 101Barz",
+            "101Barz - Wintersessie 2013/2014 - MocroManiac",
+            "Fresku - Studiosessie 272 - 101Barz",
+            "101Barz - Anu-d | Zomersessie - 2016",
+            "Ashafar | Studiosessie 306 | 101Barz",
+            "Pjotr | Zomersessie 2020 | 101Barz",
+            "Per.Verz - Kom Terug - 101 Barz",
+            "101Barz - Studiosessie 201 - Ronnie Flex",
+            "Josylvio - Studiosessie 273 - 101Barz",
+            "Hella Cash - Studiosessie 297 - 101Barz",
+            "101Barz - Wintersessies 2016 - Van Klasse (Josylvio)",
+            "Philly | Zomersessie 2021 | 101Barz",
+            "STIKSTOF | Zomersessie 2021 | 101Barz",
+            "Riffi - Wintersessie 2017 - 101Barz",
+            "Hef, Adje, Crooks | Studiosessie 398 | 101Barz",
+            "Kippie - Studiosessie 281 - 101Barz",
+            "Per.verz - Strijd In Mezelf ft Fresku",
+            "Kingsize | Studiosessie 420 | 101Barz",
+            "Ares - Zomersessie 2022 - 101Barz",
+            "ADF Samski | Wintersessie 2020 | 101Barz",
+            "Jordymone9 | Zomersessie 2019 | 101Barz",
+            "101Barz - Studiosessie 215 - Hef's '13' Sessie",
+            "101Barz - Wintersessies 2014 - 2015 - SeffelinieVDB",
+            "101Barz - Studiosessie 217 - Josylvio",
+            "Pierrii | Studiosessie 432 | 101Barz",
+            "MocroManiac | Wintersessie 2021 | 101Barz",
+            "Lijpe ft. Emms - 101Barz",
+            "Leblanco | zomersessie 2023 | 101Barz",
+            "Wilde Westen - Megasessie - 101Barz",
+            "SBMG - Studiosessie 216 [101Barz]",
+            "Ray Fuego | Wintersessie 2020 | 101Barz",
+            "Josylvio | Only OG Beats | 101Barz",
+            "Soufiane Eddyani - Studiosessie 230 - 101Barz",
+            "Jack | Studiosessie 317 | 101Barz",
+            "Wilde Westen - Sessie Met Mula B, LouiVos, 3robi, Iliass, Bartofso, Kingsize & Iliassopdebeat",
+            "Pierrii - Zomersessie 2018 - 101Barz",
+            "3robi - Fresstyle ( 101Barz )",
+            "Avondsessie met LouiVos, Scarface & Pietju Bell | FunX | De Avondshow",
+            "LouiVos - Studiosessie 291 - 101Barz",
+            "101Barz - Studiosessie 162 - Ares",
+            "Ares - Studiosessie 219 eerste stukje - 101Barz"
+        ];
+
+        const PLAYLIST_5_TRACKS = [
+            "Motivate - Gonna Dance With You FREEDOWNLOAD",
+            "Sparx - Sue\u00F1o Helado (Remix '25)",
+            "Newton - Streamline (Dj Skryker 2000s Remix)",
+            "Time !",
+            "Do It For Love (RMX) Free Download",
+            "Zaiga - Prime Directive (Cd track out soon FREE DOWNLOAD)",
+            "Tike - Old Skool (Can't Stop Edit) Free Download",
+            "Kardbord -PowPowPow! [FREEDOWNLOAD]",
+            "K9 - Outlaw",
+            "K9 - All I Want Is You (Quasimodo Remix)",
+            "Danny Vega - Ecuador (makina remix) free download!!!!!!!!!!!!",
+            "ASSAULT - El Diablo",
+            "DJ JAYS - PULL ME  THROUGH",
+            "WOODY & LEE - Catch - TNM EP",
+            "Tike Ft Ella Brown - Chasing High's (Instrumental)"
+        ];
+
+        const PLAYLIST_6_TRACKS = [
+            "MAX - Ryba Sessie (prod. Ryba)",
+            "15 - Appa - Wat Denk Jij",
+            "MocroManiac - Hammertime (Freestyle)",
+            "Redbone Ft. Boef",
+            "Stolen Pills - Lil Kleine",
+            "Per.verz - Strijd In Mezelf ft Fresku",
+            "07. Woordvoerders - Meelopers",
+            "Oussama - Drugswijk",
+            "Wretch 32 & Avelino - Fire In The Booth",
+            "Wretch 32 - Fire In The Booth (Part 5)",
+            "Lijpe - Veeg je traan (Gelekt)"
+        ];
+
+        // ========== PLAYLISTS ==========
+        const PLAYLISTS = [
+            { name: 'Trance', url: 'https://api.soundcloud.com/playlists/1521282808', tracks: PLAYLIST_1_TRACKS },
+            { name: 'Skepta', url: 'https://soundcloud.com/jelleschokkaert/sets/skep', tracks: PLAYLIST_2_TRACKS },
+            { name: 'Disco', url: 'https://soundcloud.com/jelleschokkaert/sets/discoo', tracks: PLAYLIST_3_TRACKS },
+            // Private set — secret_token grants the widget access (the canonical embed
+            // form; the widget resolver rejects path-token permalinks for sets).
+            // Anyone who can read this page's source can use the token.
+            { name: 'Sessies', url: 'https://api.soundcloud.com/playlists/1087736656?secret_token=s-dCPt0b0VXfc', tracks: PLAYLIST_4_TRACKS },
+            // Private set — see the note on Sessies above.
+            { name: 'Makina', url: 'https://api.soundcloud.com/playlists/2117945858?secret_token=s-zxoGc0Hd30l', tracks: PLAYLIST_5_TRACKS },
+            // Private set — see the note on Sessies above.
+            { name: 'Rap', url: 'https://api.soundcloud.com/playlists/938836441?secret_token=s-na6xwdBzW6w', tracks: PLAYLIST_6_TRACKS }
+        ];
+
+        // Booleans only: widget.load() serialises this object into the iframe URL and
+        // coerces any non-boolean value to `true` (a color string comes out as color=true).
+        const WIDGET_OPTS = {
+            auto_play: false,
+            hide_related: true,
+            show_comments: false,
+            show_user: false,
+            show_reposts: false,
+            show_teaser: false
+        };
+
+        function buildWidgetSrc(url) {
+            const params = Object.keys(WIDGET_OPTS)
+                .map(k => k + '=' + encodeURIComponent(WIDGET_OPTS[k]))
+                .join('&');
+            // Colour survives only on this static-URL path, so it lives here rather than
+            // in WIDGET_OPTS. Purely cosmetic anyway — the widget iframe is hidden.
+            return 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url)
+                + '&color=' + encodeURIComponent('#8B5CF6') + '&' + params;
+        }
+
+        let activePlaylist = 0;
+        const _savedPlaylist = parseInt(localStorage.getItem('activePlaylist'), 10);
+        if (_savedPlaylist >= 0 && _savedPlaylist < PLAYLISTS.length) activePlaylist = _savedPlaylist;
+
+        // Reassigned on every playlist switch; getTrackTitle() reads it.
+        let TRACK_NAMES = PLAYLISTS[activePlaylist].tracks;
+
+        // Point the iframe at the restored playlist before the widget attaches, so a
+        // non-default choice doesn't cost a second load on startup.
+        if (activePlaylist !== 0) {
+            document.getElementById('scPlayer').src = buildWidgetSrc(PLAYLISTS[activePlaylist].url);
+        }
 
         // ========== STATE ==========
         const widget = SC.Widget('scPlayer');
@@ -1537,6 +1794,10 @@
         let _lastAdvanceTime = 0;
         let _userIntentPlay = false;
         let _scheduledAdvance = null;
+        let _pendingResume = null;   // {index, pos} restored from storage, not yet played
+        let _seekOnPlay = null;      // {index, ms} — seek to apply on the next PLAY event
+        let _lastKnownPos = 0;       // last position seen; readable synchronously on pagehide
+        let _lastResumeSaveAt = 0;
 
         // ========== DOM ELEMENTS ==========
         const trackListEl = document.getElementById('trackList');
@@ -1857,6 +2118,15 @@
             fsQueueList.innerHTML = queueHtml;
             updateTrackBrowserQueueState();
         }
+        // Every queue mutation funnels through renderQueue (toggle, swipe, remove,
+        // play-from-queue, browser-add, drag-reorder, auto-advance shift) — making the
+        // end of the render the single persistence choke point. The early empty-queue
+        // return above is why this wraps rather than appends.
+        const _renderQueueCore = renderQueue;
+        renderQueue = function() {
+            _renderQueueCore();
+            savePlaylistPrefs();
+        };
 
         // Queue event delegation (tap to play, X to remove)
         function handleQueueClick(e) {
@@ -2086,6 +2356,7 @@
         // Tapping a track always plays it — never toggles to pause. Pause is reserved for the play button.
         function playTrack(index) {
             _userIntentPlay = true;
+            _pendingResume = null; // picking any track supersedes a restored session
             if (_scheduledAdvance) { clearTimeout(_scheduledAdvance); _scheduledAdvance = null; }
             if (index === currentIndex) { widget.play(); return; }
             // Loading feedback
@@ -2098,6 +2369,8 @@
             playOrderIndex = playOrder.indexOf(index);
             _skipPending = true;
             _lastAdvanceTime = Date.now();
+            _lastKnownPos = 0;
+            saveResumeState();
             const title = getTrackTitle(index);
             currentTrackNameEl.textContent = title;
             miniTrackName.textContent = title;
@@ -2166,23 +2439,36 @@
 
         function fetchCurrentTrackInfo() {
             const fetchIndex = currentIndex;
+            // Discard answers that resolve after a playlist switch — fetchIndex would
+            // point into the NEW playlist's cache while the data is the OLD track's.
+            const epoch = _loadSeq;
             widget.getCurrentSound(function(sound) {
+                if (epoch !== _loadSeq) return;
                 if (sound && fetchIndex >= 0) {
                     trackCache[fetchIndex] = trackCache[fetchIndex] || {};
                     const title = sound.title || `Track ${fetchIndex + 1}`;
                     trackCache[fetchIndex].title = title;
                     trackCache[fetchIndex].duration = sound.duration || trackCache[fetchIndex].duration || 0;
+                    // SoundCloud's -large variant is only 100×100; -t500x500 is the
+                    // lockscreen-worthy size.
+                    if (sound.artwork_url) {
+                        trackCache[fetchIndex].artwork = sound.artwork_url.replace('-large', '-t500x500');
+                    }
                     trackInfoDirty = true;
                     // Only update UI if this track is still current
                     if (fetchIndex === currentIndex) {
                         currentTrackNameEl.textContent = title;
                         miniTrackName.textContent = title;
                         if (fsOpen) fsTrackName.textContent = title;
+                        // Metadata was pushed before this answer arrived — re-push now
+                        // that the real title/artwork are known.
+                        updateMediaSession();
                     }
                     scheduleRenderTracks(); renderQueue();
                 }
             });
             widget.getDuration(function(d) {
+                if (epoch !== _loadSeq) return;
                 if (d && d > 0) {
                     if (fetchIndex === currentIndex) duration = d;
                     if (fetchIndex >= 0) {
@@ -2196,6 +2482,8 @@
         function updateCurrentTrack(index) {
             currentIndex = index;
             playOrderIndex = playOrder.indexOf(index);
+            _lastKnownPos = 0; // new track — position restarts
+            saveResumeState();
             const title = getTrackTitle(index);
             currentTrackNameEl.textContent = title;
             miniTrackName.textContent = title;
@@ -2265,6 +2553,7 @@
             generatePlayOrder();
             browserShuffledIndices = null;
             renderTrackBrowser();
+            savePlaylistPrefs();
         });
 
         // Fullscreen swipe-down to close (optimized)
@@ -2427,7 +2716,14 @@
                 if (barEl === fsProgressBar) fullscreenPlayer.classList.add('seeking');
             }
             function commitSeek() {
-                if (duration > 0) widget.seekTo(lastPercent * duration);
+                if (duration > 0) {
+                    widget.seekTo(lastPercent * duration);
+                    // Keep the resume checkpoint in sync. Matters most when seeking
+                    // while PAUSED: no PLAY_PROGRESS follows to correct _lastKnownPos,
+                    // so backgrounding would otherwise persist the pre-seek position.
+                    _lastKnownPos = lastPercent * duration;
+                    saveResumeState();
+                }
                 if (barEl === fsProgressBar) fsTimeNow.textContent = formatTime(lastPercent * duration);
                 syncAllProgressBars(lastPercent * 100);
             }
@@ -2515,6 +2811,7 @@
         function toggleOrStart() {
             ensureSilentAudioOnGesture();
             if (currentIndex === -1) {
+                if (_pendingResume) { resumePlayback(); return; }
                 if (playOrder.length > 0) playTrack(playOrder[0]);
                 return;
             }
@@ -2535,17 +2832,18 @@
         nextBtn.addEventListener('click', () => { _userIntentPlay = true; ensureSilentAudioOnGesture(); playNextInOrder(); });
 
         // ========== WIDGET EVENTS ==========
-        widget.bind(SC.Widget.Events.READY, function() {
-            widget.getSounds(function(sounds) {
-                tracks = sounds;
-                if (sounds.length > 0) {
-                    trackCount = sounds.length;
-                    generatePlayOrder(); // <-- Initialiseer de volgorde hier
-                }
-                renderTracks();
-            });
+        // These bind ONCE, outside READY. widget.load() re-fires READY on every playlist
+        // switch — binding in there would stack duplicate handlers (FINISH firing twice
+        // skips two tracks) and start a second polling interval on each switch.
+        (function bindWidgetEvents() {
             widget.bind(SC.Widget.Events.PLAY, function() {
                 _skipPending = false;
+                // Resume seek: applied here, not at playTrack time — seeking while the
+                // widget is still buffering the track gets silently dropped.
+                if (_seekOnPlay) {
+                    if (currentIndex === _seekOnPlay.index) widget.seekTo(_seekOnPlay.ms);
+                    _seekOnPlay = null;
+                }
                 trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
                 updatePlayingState(true); fetchCurrentTrackInfo();
                 // Anchor advance timer on PLAY event — guarantees a fallback timer even if
@@ -2557,14 +2855,30 @@
                     });
                 }
             });
-            widget.bind(SC.Widget.Events.PAUSE, function() { updatePlayingState(false); });
+            widget.bind(SC.Widget.Events.PAUSE, function() {
+                updatePlayingState(false);
+                // Persist the exact position on a real pause. _skipPending filters the
+                // widget's internal pause-while-switching-tracks, whose position is junk.
+                if (!_skipPending && currentIndex >= 0) {
+                    widget.getPosition(function(p) {
+                        if (p != null) { _lastKnownPos = p; saveResumeState(); }
+                    });
+                }
+            });
             widget.bind(SC.Widget.Events.PLAY_PROGRESS, function(e) {
+                _lastKnownPos = e.currentPosition;
                 if (duration > 0) {
                     const percent = (e.currentPosition / duration) * 100;
                     syncAllProgressBars(percent);
                     if (fsOpen) { fsTimeNow.textContent = formatTime(e.currentPosition); fsTimeTotal.textContent = formatTime(duration); }
                     // Always reschedule (even on backwards seek) — old timer would fire too early.
                     scheduleAdvanceTimer(duration - e.currentPosition);
+                }
+                // Periodic resume checkpoint — cheap, and keeps the saved position fresh
+                // in case iOS kills the PWA without firing pagehide.
+                if (Date.now() - _lastResumeSaveAt > 5000) {
+                    _lastResumeSaveAt = Date.now();
+                    saveResumeState();
                 }
             });
             widget.bind(SC.Widget.Events.FINISH, function() {
@@ -2575,12 +2889,227 @@
                 // in iOS background, where postMessage events to iframe may be dropped).
                 if (_userIntentPlay) playNextInOrder();
             });
-            widget.getCurrentSoundIndex(function(index) { if (index >= 0) updateCurrentTrack(index); });
             setInterval(() => {
                 if (!isPlaying || _skipPending) return;
                 widget.getCurrentSoundIndex(function(index) { if (index !== currentIndex && index >= 0) updateCurrentTrack(index); });
             }, 500);
+        })();
+
+        // ========== PLAYLIST LOADING ==========
+        // A load completes when the reloaded iframe re-fires READY. Sequence numbers
+        // discard answers belonging to a load the user already switched away from
+        // (rapid tab taps) and keep in-flight async widget replies from crossing playlists.
+        let _loadSeq = 0;
+        let _handledSeq = -1;
+
+        function handleLoad(seq, isInitial) {
+            if (seq !== _loadSeq || _handledSeq === seq) return;
+            _handledSeq = seq;
+            widget.getSounds(function(sounds) {
+                // Re-check: a rapid second switch may have started while this answer
+                // was in flight — applying it would size the list for the wrong playlist.
+                if (seq !== _loadSeq) return;
+                tracks = sounds || [];
+                // getSounds() only fully populates the current sound, so TRACK_NAMES stays
+                // the source of truth for titles — the length is the useful part.
+                trackCount = tracks.length > 0 ? tracks.length : TRACK_NAMES.length;
+                generatePlayOrder();
+                trackInfoDirty = true;
+                renderTracks();
+                if (fsOpen) renderTrackBrowser();
+            });
+            // Only on first page load: adopt whatever the widget already has selected.
+            // After a switch the player is deliberately idle, so this would wrongly
+            // mark track 1 as playing.
+            // Skip when a resume is pending: adopting the widget's sound 0 would clobber
+            // the restored bar/progress and overwrite the saved position with track 1.
+            if (isInitial && !_pendingResume) {
+                widget.getCurrentSoundIndex(function(index) { if (index >= 0) updateCurrentTrack(index); });
+            }
+        }
+
+        widget.bind(SC.Widget.Events.READY, function() {
+            handleLoad(_loadSeq, _loadSeq === 0);
         });
+
+        // Clears everything keyed by track index — all of it belongs to the outgoing
+        // playlist and would silently mis-map onto the incoming one.
+        function resetPlaylistState() {
+            currentIndex = -1;
+            playOrderIndex = 0;
+            playOrder = [];
+            queue = [];
+            trackCache = {};
+            tracks = [];
+            browserShuffledIndices = null;
+            duration = 0;
+            trackCount = TRACK_NAMES.length;
+            // Regenerate immediately from the names count — otherwise play/next (incl.
+            // lockscreen) are dead until getSounds answers. handleLoad refines it later.
+            generatePlayOrder();
+            trackInfoDirty = true;
+            trackListInitialized = false; // force a full rebuild instead of targeted updates
+            updatePlayingState(false);
+            syncAllProgressBars(0);
+            currentTrackNameEl.textContent = 'Select a track to play';
+            miniTrackName.textContent = '-';
+            fsTrackName.textContent = '-';
+            fsTimeNow.textContent = '0:00';
+            fsTimeTotal.textContent = '0:00';
+            miniPlayer.classList.remove('visible');
+            trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
+            renderQueue();
+            renderTracks();
+            if (fsOpen) renderTrackBrowser();
+        }
+
+        function switchPlaylist(index) {
+            if (index === activePlaylist || !PLAYLISTS[index]) return;
+
+            // Checkpoint the outgoing playlist first (keyed by its URL, so this must
+            // happen before activePlaylist changes).
+            saveResumeState();
+
+            // Hard stop before swapping: the index space changes underneath everything,
+            // so nothing in flight from the old playlist may survive the switch.
+            _userIntentPlay = false;
+            _skipPending = false;
+            _seekOnPlay = null;
+            if (_scheduledAdvance) { clearTimeout(_scheduledAdvance); _scheduledAdvance = null; }
+            widget.pause();
+            if (silentAudio) silentAudio.pause();
+
+            activePlaylist = index;
+            localStorage.setItem('activePlaylist', String(index));
+            TRACK_NAMES = PLAYLISTS[index].tracks;
+
+            // Snapshot BEFORE reset: resetPlaylistState renders the emptied queue, and
+            // the renderQueue choke point would persist that empty queue over the
+            // incoming playlist's stored prefs.
+            const incomingPrefs = readPrefsStore()[PLAYLISTS[index].url];
+            resetPlaylistState();
+            applyPlaylistPrefs(incomingPrefs);
+            renderPlaylistTabs();
+            // The incoming playlist remembers its own last track/position.
+            initResumeForActivePlaylist();
+
+            // Swap the iframe src directly instead of widget.load(): load() does NOT
+            // percent-encode the URL, so a private set's ?secret_token leaks into the
+            // outer query string and the widget resolver rejects it. The SC.Widget
+            // wrapper survives the reload — READY re-fires and drives handleLoad below.
+            _loadSeq++;
+            document.getElementById('scPlayer').src = buildWidgetSrc(PLAYLISTS[index].url);
+        }
+
+        // ========== PLAYLIST TABS ==========
+        const playlistTabsEl = document.getElementById('playlistTabs');
+        const fsPlaylistTabsEl = document.getElementById('fsPlaylistTabs');
+
+        function renderPlaylistTabs() {
+            const html = PLAYLISTS.map((p, i) =>
+                `<button class="playlist-tab ${i === activePlaylist ? 'active' : ''}" data-playlist="${i}" role="tab" aria-selected="${i === activePlaylist}">${escapeHTML(p.name)}</button>`
+            ).join('');
+            [playlistTabsEl, fsPlaylistTabsEl].forEach(el => { if (el) el.innerHTML = html; });
+        }
+
+        [playlistTabsEl, fsPlaylistTabsEl].forEach(el => {
+            if (!el) return;
+            el.addEventListener('click', (e) => {
+                const tab = e.target.closest('.playlist-tab');
+                if (tab) switchPlaylist(parseInt(tab.dataset.playlist, 10));
+            });
+        });
+
+        renderPlaylistTabs();
+
+        // ========== QUEUE & SHUFFLE PREFS (per-playlist) ==========
+        // Keyed by playlist URL, like the resume store. Saved via the renderQueue
+        // choke point and the shuffle toggle; restored at startup and on every switch.
+        function readPrefsStore() {
+            try { return JSON.parse(localStorage.getItem('playlistPrefs')) || {}; }
+            catch (e) { return {}; }
+        }
+
+        function savePlaylistPrefs() {
+            const all = readPrefsStore();
+            all[PLAYLISTS[activePlaylist].url] = { queue: queue.slice(), shuffle: isShuffled };
+            localStorage.setItem('playlistPrefs', JSON.stringify(all));
+        }
+
+        function applyPlaylistPrefs(saved) {
+            isShuffled = !!(saved && saved.shuffle);
+            fsShuffleBtn.classList.toggle('shuffle-active', isShuffled);
+            queue = (saved && Array.isArray(saved.queue))
+                ? saved.queue.filter(i => Number.isInteger(i) && i >= 0 && i < trackCount)
+                : [];
+            generatePlayOrder();
+            renderQueue();
+            scheduleRenderTracks(); // refresh the in-queue markers on the track list
+        }
+
+        applyPlaylistPrefs(readPrefsStore()[PLAYLISTS[activePlaylist].url]);
+
+        // ========== RESUME (per-playlist) ==========
+        // Each playlist remembers its last track + position, keyed by playlist URL so
+        // reordering PLAYLISTS can't mismatch entries. Restoring never touches the
+        // widget (iOS needs a gesture, and skip() would start playback): it paints the
+        // bar and arms _pendingResume; the first play gesture starts the track and the
+        // PLAY event applies the seek.
+        function readResumeStore() {
+            try { return JSON.parse(localStorage.getItem('resumeState')) || {}; }
+            catch (e) { return {}; }
+        }
+
+        function saveResumeState() {
+            if (currentIndex < 0) return;
+            const all = readResumeStore();
+            all[PLAYLISTS[activePlaylist].url] = {
+                index: currentIndex,
+                pos: Math.max(0, Math.floor(_lastKnownPos)),
+                duration: duration || 0
+            };
+            localStorage.setItem('resumeState', JSON.stringify(all));
+        }
+
+        function initResumeForActivePlaylist() {
+            _pendingResume = null;
+            const saved = readResumeStore()[PLAYLISTS[activePlaylist].url];
+            if (!saved || !Number.isInteger(saved.index)) return;
+            // The playlist may have shrunk since the save.
+            if (saved.index < 0 || saved.index >= TRACK_NAMES.length) return;
+            // Seek only pays off away from the edges; near the start (or without a known
+            // duration to validate against) resume the track from the beginning.
+            const pos = (saved.pos > 3000 && saved.duration > 0 && saved.pos < saved.duration - 3000)
+                ? saved.pos : 0;
+            _pendingResume = { index: saved.index, pos: pos, duration: saved.duration || 0 };
+            const title = getTrackTitle(saved.index);
+            currentTrackNameEl.textContent = title;
+            miniTrackName.textContent = title;
+            if (pos > 0) syncAllProgressBars((pos / saved.duration) * 100);
+        }
+
+        function resumePlayback() {
+            const r = _pendingResume; // playTrack clears _pendingResume — read first
+            if (r.pos > 0) _seekOnPlay = { index: r.index, ms: r.pos };
+            playTrack(r.index);
+            // playTrack checkpointed pos 0 with duration 0 (no cached duration on a
+            // fresh load). Restore the known position AND duration so an app kill
+            // before the next checkpoint doesn't invalidate the position we just used —
+            // saveResumeState only trusts pos when a real duration accompanies it.
+            // Setting the global also lets the PLAY handler anchor the advance timer.
+            _lastKnownPos = r.pos;
+            if (r.duration > 0) duration = r.duration;
+            saveResumeState();
+        }
+
+        // iOS kills backgrounded PWAs without warning — checkpoint on every hide.
+        // Synchronous _lastKnownPos only: an async getPosition answer would never arrive.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') saveResumeState();
+        });
+        window.addEventListener('pagehide', () => saveResumeState());
+
+        initResumeForActivePlaylist();
 
         // ========== PAGE LIFECYCLE ==========
         document.addEventListener('visibilitychange', () => {
@@ -2590,17 +3119,28 @@
                 if (paused === isPlaying) updatePlayingState(!paused);
             });
             widget.getCurrentSoundIndex(function(index) {
-                if (index >= 0 && index !== currentIndex) updateCurrentTrack(index);
+                // Only adopt the widget's index when something was actually playing —
+                // this resync exists to catch background auto-advance. When idle after a
+                // playlist switch (currentIndex -1, no play intent), the widget reports
+                // sound 0 and adopting it would fake a "now playing" track 1.
+                if (index >= 0 && index !== currentIndex && (currentIndex >= 0 || _userIntentPlay)) updateCurrentTrack(index);
             });
-            widget.getPosition(function(pos) {
-                if (duration > 0) {
-                    syncAllProgressBars((pos / duration) * 100);
-                    if (fsOpen) fsTimeNow.textContent = formatTime(pos);
-                }
-            });
-            widget.getDuration(function(d) {
-                if (d && d > 0) duration = d;
-            });
+            // Position/duration resync is only meaningful once something has played.
+            // While idle (pending resume, or fresh after a switch) the widget reports
+            // sound 0's data — syncing would paint 0% over the restored progress and
+            // pull in the wrong track's duration.
+            if (currentIndex >= 0) {
+                widget.getPosition(function(pos) {
+                    if (pos != null) _lastKnownPos = pos;
+                    if (duration > 0) {
+                        syncAllProgressBars((pos / duration) * 100);
+                        if (fsOpen) fsTimeNow.textContent = formatTime(pos);
+                    }
+                });
+                widget.getDuration(function(d) {
+                    if (d && d > 0) duration = d;
+                });
+            }
             // Re-activate silent audio bridge if it was interrupted while backgrounded
             if (silentAudio && silentAudio.paused && _userIntentPlay) activateSilentAudio();
             // Sync MediaSession with current state
@@ -2627,10 +3167,13 @@
 
         function updateMediaSession() {
             if (!('mediaSession' in navigator)) return;
+            const art = trackCache[currentIndex]?.artwork;
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: getTrackTitle(currentIndex) || 'Unknown Track',
-                artist: 'SoundCloud', album: 'Music Player',
-                artwork: [{ src: DEFAULT_ARTWORK, sizes: '512x512', type: 'image/svg+xml' }]
+                artist: 'SoundCloud', album: PLAYLISTS[activePlaylist].name,
+                artwork: art
+                    ? [{ src: art, sizes: '500x500', type: 'image/jpeg' }]
+                    : [{ src: DEFAULT_ARTWORK, sizes: '512x512', type: 'image/svg+xml' }]
             });
         }
 
@@ -2649,7 +3192,8 @@
                     _userIntentPlay = true;
                     if (silentAudio && silentAudio.paused) activateSilentAudio();
                     if (currentIndex === -1) {
-                        if (playOrder.length > 0) playTrack(playOrder[0]);
+                        if (_pendingResume) resumePlayback();
+                        else if (playOrder.length > 0) playTrack(playOrder[0]);
                     } else {
                         widget.play();
                     }
@@ -2668,7 +3212,15 @@
                 // so the lockscreen shows skip-track buttons instead of "skip 15s" buttons.
                 ['seekbackward', null],
                 ['seekforward', null],
-                ['seekto', (d) => { if (d.seekTime !== undefined && duration > 0) { widget.seekTo(d.seekTime * 1000); updatePositionState(); } }],
+                ['seekto', (d) => {
+                    if (d.seekTime !== undefined && duration > 0) {
+                        widget.seekTo(d.seekTime * 1000);
+                        // Same paused-seek staleness fix as the in-app seek bars.
+                        _lastKnownPos = d.seekTime * 1000;
+                        saveResumeState();
+                        updatePositionState();
+                    }
+                }],
                 ['stop', () => {
                     _userIntentPlay = false;
                     if (_scheduledAdvance) { clearTimeout(_scheduledAdvance); _scheduledAdvance = null; }
