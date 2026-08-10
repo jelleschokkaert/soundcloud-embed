@@ -1565,8 +1565,12 @@
 
         const PLAYLIST_2_TRACKS = [
             "Bad Em Up - Wiley, Skepta and Frisco The Best of Risky Roadz (Wikko Remix)",
-            "Bringing It Back X Kylie Minogue",
+            "Thats Not Me (DJ Q Rhythm & Gash Edit)",
+            "schooling seniors",
+            "LONDON CITY",
+            "ghetto gospel",
             "Moves Like Skepta",
+            "Bringing It Back X Kylie Minogue",
             "Gypsy Woman X Gas Me Up",
             "Lady (Hear Me Tonight)x AJ Tracey",
             "Freestyler X On The Radar",
@@ -1584,11 +1588,7 @@
             "Stormzy - WickedSkengMan (Wikko Remix)",
             "AITCH ORGAN BANGER (KENNY ALLSTAR 1XTRA)",
             "verdansk in the rain",
-            "Memories x PIB",
-            "Thats Not Me (DJ Q Rhythm & Gash Edit)",
-            "schooling seniors",
-            "ghetto gospel",
-            "LONDON CITY"
+            "Memories x PIB"
         ];
 
         const PLAYLIST_3_TRACKS = [
@@ -1708,14 +1708,14 @@
         ];
 
         const PLAYLIST_6_TRACKS = [
-            "MAX - Ryba Sessie (prod. Ryba)",
             "15 - Appa - Wat Denk Jij",
+            "07. Woordvoerders - Meelopers",
             "MocroManiac - Hammertime (Freestyle)",
             "Redbone Ft. Boef",
             "Stolen Pills - Lil Kleine",
-            "Per.verz - Strijd In Mezelf ft Fresku",
-            "07. Woordvoerders - Meelopers",
+            "MAX - Ryba Sessie (prod. Ryba)",
             "Oussama - Drugswijk",
+            "Per.verz - Strijd In Mezelf ft Fresku",
             "Wretch 32 & Avelino - Fire In The Booth",
             "Wretch 32 - Fire In The Booth (Part 5)",
             "Lijpe - Veeg je traan (Gelekt)"
@@ -2580,7 +2580,11 @@
         }
 
         fullscreenPlayer.addEventListener('touchstart', (e) => {
-            if (isInProgressZone(e.touches[0].clientY)) return;
+            // A gesture that starts in the seek zone belongs to the seek handler for
+            // its whole lifetime. Mark it canceled — a bare return would leave
+            // fsTouchStartY stale, and a finger drifting out of the zone mid-seek
+            // would engage swipe-to-close against a previous gesture's coordinates.
+            if (isInProgressZone(e.touches[0].clientY)) { fsDragging = 'canceled'; return; }
             fsTouchStartY = e.touches[0].clientY;
             fsTouchStartTime = Date.now();
             fsDragging = false;
@@ -2680,12 +2684,16 @@
 
         // Swipe-up to open fullscreen
         function addSwipeUpToOpen(el) {
-            let startX = 0, startY = 0;
+            let startX = 0, startY = 0, seekGesture = false;
             el.addEventListener('touchstart', (e) => {
+                // Gestures starting on the seek line belong to the seek handler —
+                // a drag that drifts upward must not open the fullscreen player.
+                seekGesture = !!e.target.closest('.now-playing-bar-progress');
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
             }, { passive: true });
             el.addEventListener('touchend', (e) => {
+                if (seekGesture) return;
                 const dx = e.changedTouches[0].clientX - startX;
                 const dy = e.changedTouches[0].clientY - startY;
                 if (dy < -50 && Math.abs(dy) > Math.abs(dx) * 1.5 && !fsOpen) openFullscreen();
@@ -2697,7 +2705,7 @@
         // ========== SEEK HANDLER FACTORY ==========
         function createSeekHandler(barEl, fillEl, useWidth) {
             let seeking = false, lastPercent = 0;
-            let touchStartX = 0, touchStartTime = 0, dragged = false;
+            let touchStartX = 0, touchStartY = 0, dragged = false;
             function getPercent(e) {
                 const rect = barEl.getBoundingClientRect();
                 const t = (e.touches && e.touches.length > 0) ? e.touches[0]
@@ -2743,16 +2751,27 @@
                     dragged = true;
                     startSeekVisual();
                 }
-                if (dragged) { lastPercent = getPercent(e); updateFill(lastPercent); }
+                if (dragged) {
+                    e.preventDefault(); // claim the gesture; registered {passive:false}
+                    lastPercent = getPercent(e);
+                    updateFill(lastPercent);
+                }
             }
             function onMouseMove(e) { lastPercent = getPercent(e); updateFill(lastPercent); }
             function endTouch(e) {
                 if (dragged) {
                     commitSeek();
-                } else if (Date.now() - touchStartTime > 150) {
-                    lastPercent = getPercent(e);
-                    updateFill(lastPercent);
-                    commitSeek();
+                } else {
+                    // Tap-to-seek. Intent is judged by MOVEMENT, not press duration —
+                    // the old 150ms minimum silently discarded normal quick taps, which
+                    // is the main way to jump around long tracks. A mostly-vertical
+                    // movement is a stray swipe over the bar, not a seek.
+                    const t = e.changedTouches[0];
+                    if (t && Math.abs(t.clientY - touchStartY) < 12) {
+                        lastPercent = getPercent(e);
+                        updateFill(lastPercent);
+                        commitSeek();
+                    }
                 }
                 cleanupTouch();
             }
@@ -2766,7 +2785,7 @@
             function cancelSeek() { cleanupTouch(); }
             barEl.addEventListener('touchstart', (e) => {
                 touchStartX = e.touches[0].clientX;
-                touchStartTime = Date.now();
+                touchStartY = e.touches[0].clientY;
                 lastPercent = getPercent(e);
                 dragged = false;
                 document.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -2993,12 +3012,17 @@
             // The incoming playlist remembers its own last track/position.
             initResumeForActivePlaylist();
 
-            // Swap the iframe src directly instead of widget.load(): load() does NOT
-            // percent-encode the URL, so a private set's ?secret_token leaks into the
-            // outer query string and the widget resolver rejects it. The SC.Widget
-            // wrapper survives the reload — READY re-fires and drives handleLoad below.
-            _loadSeq++;
-            document.getElementById('scPlayer').src = buildWidgetSrc(PLAYLISTS[index].url);
+            // Reload via widget.load() — the API's sanctioned path. It re-initializes
+            // the event bridge in the new iframe document and re-fires READY; a bare
+            // iframe src swap silently kills every event subscription (PLAY, PROGRESS,
+            // FINISH), leaving playback working but the app deaf: dead progress bar,
+            // no duration (seeks no-op) and no auto-advance.
+            // load() does NOT percent-encode its url, so pass it pre-encoded — otherwise
+            // a private set's ?secret_token leaks into the outer query string and the
+            // resolver rejects it. Encoded is exactly the format of the static embed src.
+            const seq = ++_loadSeq;
+            const opts = Object.assign({}, WIDGET_OPTS, { callback: function() { handleLoad(seq, false); } });
+            widget.load(encodeURIComponent(PLAYLISTS[index].url), opts);
         }
 
         // ========== PLAYLIST TABS ==========
