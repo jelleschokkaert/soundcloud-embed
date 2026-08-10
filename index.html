@@ -1771,6 +1771,13 @@
         }
 
         // ========== STATE ==========
+        // If the widget API script failed (offline PWA launch), everything below is
+        // dead — say so instead of spinning on "Loading tracks..." forever.
+        if (typeof SC === 'undefined') {
+            document.getElementById('trackList').innerHTML =
+                '<div class="loading"><span style="color:var(--danger)">Couldn\'t reach SoundCloud. Check your connection and reload.</span></div>';
+            throw new Error('SoundCloud widget API failed to load');
+        }
         const widget = SC.Widget('scPlayer');
         const silentAudio = document.getElementById('silentAudio');
         let tracks = [];
@@ -2144,6 +2151,10 @@
                 const queuePos = parseInt(item.dataset.queuePos);
                 queue.splice(queuePos, 1);
                 renderQueue(); renderTracks();
+                // This tap may be the session's first gesture — arm the silent-audio
+                // bridge here like every other play entry point, or iOS refuses the
+                // later non-gesture play() and background audio dies.
+                ensureSilentAudioOnGesture();
                 playTrack(trackIdx, true);
             }
         }
@@ -2278,7 +2289,19 @@
 
         // Centrale functie om het volgende nummer in de volgorde te spelen
         function playNextInOrder() {
-            if (currentIndex === -1) { if (playOrder.length > 0) playTrack(playOrder[0], true); return; }
+            if (currentIndex === -1) {
+                // Even from idle (fresh open, pending resume), a queued track wins —
+                // matching the behavior once something is playing.
+                if (queue.length > 0) {
+                    const n = queue.shift();
+                    renderQueue();
+                    scheduleRenderTracks();
+                    playTrack(n);
+                    return;
+                }
+                if (playOrder.length > 0) playTrack(playOrder[0], true);
+                return;
+            }
             if (queue.length > 0) {
                 const n = queue.shift();
                 renderQueue();
@@ -2423,10 +2446,25 @@
             });
         }
 
+        // The widget emits a rapid PAUSE/PLAY burst while skip() switches tracks.
+        // Repainting on every event makes the equalizer and play icons flash for a
+        // few frames on every track tap — settle the UI once the burst goes quiet
+        // instead. Logic (isPlaying, timers, saves, silent audio) stays immediate.
+        let _playingUiTimer = null;
+        function syncPlayingUi() {
+            nowPlayingBar.classList.toggle('playing', isPlaying);
+            syncAllPlayIcons(isPlaying);
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+            if (fsOpen) syncFullscreenState();
+            // The row spinner bridges tap → settled playback; remove it here rather
+            // than on the first (often stale) PLAY event of the transition burst.
+            if (isPlaying) trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
+        }
+
         function updatePlayingState(playing) {
             isPlaying = playing;
-            nowPlayingBar.classList.toggle('playing', playing);
-            syncAllPlayIcons(playing);
+            if (_playingUiTimer) clearTimeout(_playingUiTimer);
+            _playingUiTimer = setTimeout(() => { _playingUiTimer = null; syncPlayingUi(); }, 120);
             // Silent audio mirrors USER INTENT, not widget state.
             // Widget pauses momentarily between tracks (FINISH → PAUSE → next loads).
             // Pausing silent audio in that gap throttles parent JS in iOS background,
@@ -2680,6 +2718,10 @@
         });
 
         window.addEventListener('popstate', () => { if (fsOpen) closeFullscreen(); });
+        // Reloading while fullscreen leaves { fsOpen: true } on the history entry.
+        // openFullscreen would then skip its pushState and closeFullscreen's
+        // history.back() would navigate past the app instead of just closing.
+        if (history.state?.fsOpen) history.replaceState(null, '', '');
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && fsOpen) closeFullscreen(); });
 
         // Swipe-up to open fullscreen
@@ -2863,7 +2905,6 @@
                     if (currentIndex === _seekOnPlay.index) widget.seekTo(_seekOnPlay.ms);
                     _seekOnPlay = null;
                 }
-                trackListEl.querySelectorAll('.track-item.loading').forEach(el => el.classList.remove('loading'));
                 updatePlayingState(true); fetchCurrentTrackInfo();
                 // Anchor advance timer on PLAY event — guarantees a fallback timer even if
                 // PLAY_PROGRESS gets throttled or never fires in iOS background. Uses current
@@ -3033,7 +3074,19 @@
             const html = PLAYLISTS.map((p, i) =>
                 `<button class="playlist-tab ${i === activePlaylist ? 'active' : ''}" data-playlist="${i}" role="tab" aria-selected="${i === activePlaylist}">${escapeHTML(p.name)}</button>`
             ).join('');
-            [playlistTabsEl, fsPlaylistTabsEl].forEach(el => { if (el) el.innerHTML = html; });
+            [playlistTabsEl, fsPlaylistTabsEl].forEach(el => {
+                if (!el) return;
+                el.innerHTML = html;
+                // The row scrolls once tabs overflow — center the active one, or a
+                // launch on a later playlist (restored from storage) shows its tab
+                // off-screen to the right.
+                const act = el.querySelector('.playlist-tab.active');
+                if (act && el.clientWidth > 0) {
+                    const rowRect = el.getBoundingClientRect();
+                    const actRect = act.getBoundingClientRect();
+                    el.scrollLeft += actRect.left - rowRect.left - (rowRect.width - actRect.width) / 2;
+                }
+            });
         }
 
         [playlistTabsEl, fsPlaylistTabsEl].forEach(el => {
@@ -3263,12 +3316,8 @@
             _origUpdateCurrentTrack(index);
             updateMediaSession(); updatePositionState();
         };
-        const _origUpdatePlayingState = updatePlayingState;
-        updatePlayingState = function(playing) {
-            _origUpdatePlayingState(playing);
-            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
-            if (fsOpen) syncFullscreenState();
-        };
+        // (playbackState + fullscreen sync for play/pause live in syncPlayingUi,
+        // debounced with the rest of the playing-state UI.)
 
         setInterval(() => { if (isPlaying && duration > 0) updatePositionState(); }, 1000);
 
