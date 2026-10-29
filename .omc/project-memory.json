@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1777291197600,
+  "lastScanned": 1789738174005,
   "projectRoot": "C:\\Users\\jelle\\OneDrive\\Bureaublad\\Documenten\\projecten\\soundcloud-embed",
   "techStack": {
     "languages": [],
@@ -24,54 +24,25 @@
   "structure": {
     "isMonorepo": false,
     "workspaces": [],
-    "mainDirectories": [
-      "src"
-    ],
+    "mainDirectories": [],
     "gitBranches": {
       "defaultBranch": "master",
       "branchingStrategy": null
     }
   },
   "customNotes": [],
-  "directoryMap": {
-    "dist": {
-      "path": "dist",
-      "purpose": "Distribution/build output",
-      "fileCount": 0,
-      "lastAccessed": 1777291197582,
-      "keyFiles": []
-    },
-    "src": {
-      "path": "src",
-      "purpose": "Source code",
-      "fileCount": 0,
-      "lastAccessed": 1777291197583,
-      "keyFiles": []
-    }
-  },
+  "directoryMap": {},
   "hotPaths": [
     {
       "path": "index.html",
-      "accessCount": 387,
-      "lastAccessed": 1777377887550,
-      "type": "file"
-    },
-    {
-      "path": "",
-      "accessCount": 10,
-      "lastAccessed": 1775812773231,
-      "type": "directory"
-    },
-    {
-      "path": "manifest.json",
-      "accessCount": 4,
-      "lastAccessed": 1775914214016,
+      "accessCount": 20,
+      "lastAccessed": 1786357032377,
       "type": "file"
     },
     {
       "path": "sw.js",
-      "accessCount": 2,
-      "lastAccessed": 1775898689629,
+      "accessCount": 3,
+      "lastAccessed": 1789738538011,
       "type": "file"
     }
   ],
